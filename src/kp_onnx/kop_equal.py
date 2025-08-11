@@ -9,7 +9,6 @@ def compute_shader_equal(index=("input", "GlobalInvocationId", ivec2),
                          in_b=("buffer", 1, Array(f32)),
                          out_data=("buffer", 2, Array(f32))):
     i = index.x
-    # 绝对误差
     diff = abs(in_a[i] - in_b[i])
     out_data[i] = step(diff, 0.0)
 

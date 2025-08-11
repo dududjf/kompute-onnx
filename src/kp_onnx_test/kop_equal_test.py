@@ -8,13 +8,12 @@ from kp_onnx.kop_equal import EqualOp
 
 device_id = 0
 mgr = Manager(device_id)
-print(mgr.list_devices()[device_id])
+print(mgr.get_device_properties())
 
 equal_op = EqualOp(mgr, ['input_a', 'input_b'], ['output'])
 
 numpy_in_a = np.random.random(1024 * 1024)
 numpy_in_b = np.random.random(1024 * 1024)
-
 
 start_time = time.time()
 numpy_out = np.equal(numpy_in_a, numpy_in_b)

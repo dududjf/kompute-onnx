@@ -6,10 +6,9 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from kp_onnx.kop_bitwise_not import BitwiseNotOp
 
-
 device_id = 0
 mgr = Manager(device_id)
-print(mgr.list_devices()[device_id])
+print(mgr.get_device_properties())
 
 bitwise_not_op = BitwiseNotOp(mgr, ['input'], ['output'])
 numpy_in = np.random.randint(-1000, 1000, 1024 * 1024)

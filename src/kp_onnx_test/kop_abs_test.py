@@ -4,24 +4,23 @@ import time
 import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
-from kp_onnx.kop_not import NotOp
+from kp_onnx.kop_abs import AbsOp
 
 device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-not_op = NotOp(mgr, ['input'], ['output'])
-numpy_in = np.random.random(1024 * 1024)
+abs_op = AbsOp(mgr, ['input'], ['output'])
+numpy_in = np.random.uniform(-1000, 1000, 1024 * 1024).astype(np.float32)
 
 start_time = time.time()
-numpy_out = np.logical_not(numpy_in)
+numpy_out = np.abs(numpy_in)
 print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = not_op.run(numpy_in)[0]
-print(f"{not_op}:", time.time() - start_time, "seconds")
+kp_out = abs_op.run(numpy_in)[0]
+print(f"{abs_op}:", time.time() - start_time, "seconds")
 
 print(numpy_out)
 print(kp_out)
 print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
-print(np.array_equal(numpy_out, kp_out))
