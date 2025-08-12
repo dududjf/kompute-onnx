@@ -68,7 +68,8 @@ void main() {{
         assert isinstance(tensor_like, np.ndarray), "CastLikeOp expects numpy ndarray as second input"
 
         # —— 输入统一转成 float32 再进入 shader ——
-        #   （i32->f32 的场景也可以这样做：先在 CPU 转成 float32，shader 里只处理 float -> {float,int}）
+        # 先在 CPU 转成 float32，shader 里只处理 float -> {float,int}）
+        # 暂时先这么做，在GPU做这一步有很多坑
         x_flat = tensor_in.reshape(-1)
         if x_flat.dtype != np.float32:
             x_flat = x_flat.astype(np.float32, copy=False)
