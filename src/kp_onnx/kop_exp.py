@@ -8,15 +8,6 @@ class ExpOp:
     onnx::Exp 的 Kompute 实现（逐元素一元指数）
     - 输入：任意形状张量（当前实现假设 float32）
     - 输出：与输入同形状
-    复用点：
-      * 设备属性查询 / local_size 自动选择
-      * GLSL -> SPIR-V 编译、algorithm 构建
-      * sequence: SyncDevice -> Dispatch -> SyncLocal
-      * 形状变化触发重编译（spec const / workgroup 缓存）
-    专用点：
-      * shader 核心逻辑：out[i] = exp(in[i])
-      * spec const 仅需元素总数（N）
-      * 形状校验/推断：输出形状=输入形状
     """
 
     def __init__(self, manager: kp.Manager, input: list[str], output: list[str]):
@@ -24,22 +15,23 @@ class ExpOp:
         self.input = input
         self.output = output
 
-        # —— 可复用：选择合适的 local_size_x（1D 网格足够）——
+        # [可复用] 根据设备属性选择合适的 local_size_x
         props = manager.get_device_properties()
         max_invocations = props['max_work_group_invocations']
         max_wg_size = props['max_work_group_size']
 
         local_size_x = 1
+        # 一元逐元素 → 1D 网格
         while 2 * local_size_x <= max_invocations and 2 * local_size_x <= max_wg_size[0]:
             local_size_x *= 2
         self.local_size_x = local_size_x
 
-        # —— 运行期缓存 ——（形状变才重建）
+        # [可复用] 运行期缓存
         self.total_elems = None
         self.workgroup = None
         self.shader = None
 
-        # —— 专用：GLSL compute shader（逐元素 exp）——
+        # [Exp 专用] 一元逐元素exp
         self.shader_code = """
 #version 450
 layout (local_size_x = {local_size_x}) in;
@@ -47,11 +39,10 @@ layout (local_size_x = {local_size_x}) in;
 layout (set = 0, binding = 0) readonly buffer InBuf  {{ float in_buf[]; }};
 layout (set = 0, binding = 1) writeonly buffer OutBuf {{ float out_buf[]; }};
 
-layout (constant_id = 0) const float N_f = 0;  // 元素总数
+layout (constant_id = 0) const uint N = 0u;  // 元素总数
 
 void main() {{
     uint idx = gl_GlobalInvocationID.x;
-    uint N = uint(N_f);
     if (idx >= N) return;
 
     // —— 核心：逐元素指数 ——
@@ -66,39 +57,44 @@ void main() {{
     __str__ = __repr__
 
     def run(self, x: np.ndarray):
-        # —— 可复用：基础断言+展平到 1D ——
+        # [可复用] 入参断言（一元、任意形状）
         assert isinstance(x, np.ndarray), "ExpOp expects a numpy ndarray"
+
+        # [可复用] 展平到 1D buffer，当前实现 float32
         x_flat = x.reshape(-1).astype(np.float32)
         N = x_flat.size
 
-        # —— 可复用：创建 Kompute 张量 ——
-        t_in = self.manager.tensor(x_flat)
-        t_out = self.manager.tensor(np.zeros_like(x_flat))
+        # [可复用] 构建/复用 GPU tensors
+        tensor_in = self.manager.tensor(x_flat)
+        tensor_out = self.manager.tensor(np.zeros_like(x_flat))
 
-        # —— 可复用：形状变化才重新编译/建图 ——
+        # [可复用] 形状变化触发重编译与重建调度参数
         if self.shader is None or self.total_elems != N:
             self.total_elems = N
+            # 选择 workgroup 大小（1D）
             local_size_x = min(self.local_size_x, max(1, N))
-
             # 编译 shader
             self.shader = compile_source(self.shader_code.format(local_size_x=local_size_x))
-            # 计算 1D 网格
+            # 计算 1D 网格尺寸
             self.workgroup = ((N + local_size_x - 1) // local_size_x, 1, 1)
 
-        # —— 可复用：执行（设备同步→调度→取回） ——
+        # [可复用] 构建 algorithm & 执行序列
         algo = self.manager.algorithm(
-            [t_in, t_out],
-            self.shader,
-            self.workgroup,
-            [float(N)],  # spec const：元素数
-            []
+            [tensor_in, tensor_out],           # buffers
+            self.shader,             # spirv
+            self.workgroup,          # dispatch grid
+            [int(N)],              # spec consts
+            []                       # push consts
         )
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([t_in])) \
+        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
            .record(kp.OpAlgoDispatch(algo)) \
-           .record(kp.OpTensorSyncLocal([t_out])) \
+           .record(kp.OpTensorSyncLocal([tensor_out])) \
            .eval()
 
-        y = t_out.data().reshape(x.shape)
-        del t_in, t_out
-        return [y]
+        # [可复用] 还原形状并返回
+        output_tensor = tensor_out.data().reshape(x.shape)
+
+        # [可复用] 资源句柄释放（有助于更及时地回收底层资源）
+        del tensor_in, tensor_out
+        return [output_tensor]

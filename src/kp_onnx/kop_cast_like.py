@@ -4,9 +4,8 @@ from .shader_utils import compile_source
 
 class CastLikeOp:
     """
-    ONNX::CastLike 的 Kompute 实现（修正版）
+    ONNX::CastLike 的 Kompute 实现
     现支持：float32 -> float32 / int32，int32 -> float32（通过先转 float32 的方式）
-    如需更多 dtype，可扩展 shader 分支与 Python 端 dtype 选择。
     """
 
     def __init__(self, manager: kp.Manager, input: list[str], output: list[str]):
@@ -98,7 +97,7 @@ void main() {{
         t_out_f = self.manager.tensor(np.zeros(N, dtype=np.float32))
         t_out_i = self.manager.tensor(np.zeros(N, dtype=np.int32))
 
-        # 注意：spec consts 必须与 constant_id 类型匹配，这里使用 uint32
+        # 注意：spec consts 必须与 constant_id 类型匹配
         algo = self.manager.algorithm(
             [t_in, t_out_f, t_out_i],
             self.shader,
