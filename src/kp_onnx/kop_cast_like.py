@@ -93,13 +93,13 @@ void main() {{
             self.workgroup = ((N + local_size_x - 1) // local_size_x, 1, 1)
 
         # 分配 GPU buffer
-        t_in = self.manager.tensor(x_flat.astype(np.float32, copy=False))
-        t_out_f = self.manager.tensor(np.zeros(N, dtype=np.float32))
-        t_out_i = self.manager.tensor(np.zeros(N, dtype=np.int32))
+        tensor_in = self.manager.tensor(x_flat.astype(np.float32, copy=False))
+        tensor_out_f = self.manager.tensor(np.zeros(N, dtype=np.float32))
+        tensor_out_i = self.manager.tensor(np.zeros(N, dtype=np.int32))
 
         # 注意：spec consts 必须与 constant_id 类型匹配
         algo = self.manager.algorithm(
-            [t_in, t_out_f, t_out_i],
+            [tensor_in, tensor_out_f, tensor_out_i],
             self.shader,
             self.workgroup,
             [],  # spec const 空
@@ -107,22 +107,22 @@ void main() {{
         )
 
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([t_in])) \
+        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
            .record(kp.OpAlgoDispatch(algo)) \
-           .record(kp.OpTensorSyncLocal([t_out_f, t_out_i])) \
+           .record(kp.OpTensorSyncLocal([tensor_out_f, tensor_out_i])) \
            .eval()
 
         if want_int_output:
-            raw_i = t_out_i.data()
+            raw_i = tensor_out_i.data()
             # Kompute 的 Python 绑定常把 SSBO 映射为 float32 视图
             # 这里用 view(np.int32) 把同一段内存按 int32 解释
             if isinstance(raw_i, np.ndarray):
-                out = (raw_i.view(np.int32)).reshape(tensor_in.shape)
+                output_tensor = (raw_i.view(np.int32)).reshape(tensor_in.shape)
             else:
                 # 极少数绑定返回 bytes-like，用 frombuffer
-                out = np.frombuffer(raw_i, dtype=np.int32, count=N).reshape(tensor_in.shape)
+                output_tensor = np.frombuffer(raw_i, dtype=np.int32, count=N).reshape(tensor_in.shape)
         else:
-            out = t_out_f.data().reshape(tensor_in.shape)
+            output_tensor = tensor_out_f.data().reshape(tensor_in.shape)
 
-        del t_in, t_out_f, t_out_i
-        return [out]
+        del tensor_in, tensor_out_f, tensor_out_i
+        return [output_tensor]
