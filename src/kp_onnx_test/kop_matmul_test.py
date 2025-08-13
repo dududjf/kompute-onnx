@@ -9,7 +9,9 @@ print(mgr.get_device_properties())
 
 matmul_op = MatMulOp(mgr, ['input1', 'input2'], ['output'])
 numpy_in_1 = np.random.random((2, 5, 1000, 512))
+print(numpy_in_1.shape)
 numpy_in_2 = np.random.random((512, 1024))
+print(numpy_in_2.shape)
 
 start_time = time.time()
 numpy_out = np.matmul(numpy_in_1, numpy_in_2)
@@ -25,8 +27,9 @@ print('Max error:', np.abs(numpy_out - kp_out).max())
 print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 numpy_in_1 = np.random.random((2, 5, 1000, 512))
+print(numpy_in_1.shape)
 numpy_in_2 = np.random.random((2, 5, 512, 1024))
-
+print(numpy_in_2.shape)
 start_time = time.time()
 numpy_out = np.matmul(numpy_in_1, numpy_in_2)
 print("Numpy:", time.time() - start_time, "seconds")

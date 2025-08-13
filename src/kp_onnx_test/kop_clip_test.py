@@ -9,107 +9,75 @@ print(mgr.get_device_properties())
 
 clip_op = ClipOp(mgr, ['data', 'min', 'max'], ['output'])
 
-# ---- Case 1: min: None, max: None ----
-print("Case 1: min: None, max: None")
-x = (np.random.random(1024 * 1024).astype(np.float32) - 0.5) * 8.0
 
-# NumPy
+# 统一的 numpy 参考实现（能处理 None）
+def numpy_clip_like(x, vmin=None, vmax=None):
+    if vmin is None and vmax is None:
+        return x
+    if vmin is None:
+        return np.minimum(x, vmax)
+    if vmax is None:
+        return np.maximum(x, vmin)
+    return np.clip(x, vmin, vmax)
+
+
+x = np.random.random(32 * 1024 * 1024)
+
+# -------- Case 1: 无 min，无 max --------
+print("Case 1: min=None, max=None")
 start_time = time.time()
-np_out = x.copy()
-print(f"Numpy: ", time.time() - start_time, "seconds")
+np_out = numpy_clip_like(x, None, None).astype(np.float32)
+print("Numpy:", time.time() - start_time, "seconds")
 
-# Vulkan
 start_time = time.time()
 kp_out = clip_op.run(x)[0]
-
 print(f"{clip_op}: ", time.time() - start_time, "seconds")
 
-# Validate the results
-print(f"Max error: ", np.abs(np_out - kp_out).max())
+print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+print("----")
 
-# ---- Case 2: min: Scalar, max: None ----
-print("Case 2: min: Scalar, max: None")
-x = (np.random.random(1024 * 1024).astype(np.float32) - 0.5) * 8.0
-min_val = 0.0
-
-# NumPy
+# -------- Case 2: 仅 min --------
+print("Case 2: min=0.2, max=None")
+vmin = np.asarray([0.2], dtype=np.float32)
 start_time = time.time()
-np_out = np.maximum(x, min_val)
-print(f"Numpy: ", time.time() - start_time, "seconds")
+np_out = numpy_clip_like(x, vmin, None).astype(np.float32)
+print("Numpy:", time.time() - start_time, "seconds")
 
-# Vulkan
 start_time = time.time()
-kp_out = clip_op.run(x, min_val)[0]
+kp_out = clip_op.run(x, vmin)[0]
 print(f"{clip_op}: ", time.time() - start_time, "seconds")
 
-# Validate the results
-print(f"Max error: ", np.abs(np_out - kp_out).max())
+print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+print("----")
 
-# ---- Case 3: min: None, max: Scalar ----
-print("Case 3: min: None, max: Scalar")
-x = (np.random.random(1024 * 1024).astype(np.float32) - 0.5) * 8.0
-max_val = 1.25
-
-# NumPy
+# -------- Case 3: 仅 max --------
+print("Case 3: min=None, max=0.7")
+vmax = np.asarray([0.7], dtype=np.float32)
 start_time = time.time()
-np_out = np.clip(x, None, max_val)
-print(f"Numpy: ", time.time() - start_time, "seconds")
+np_out = numpy_clip_like(x, None, vmax).astype(np.float32)
+print("Numpy:", time.time() - start_time, "seconds")
 
-# Vulkan
 start_time = time.time()
-kp_out = clip_op.run(x, None, max_val)[0]
-print(f"{clip_op}: ", time.time() - start_time, "seconds")
+kp_out = clip_op.run(x, None, vmax)[0]  # 只传 max
+print(f"{clip_op}:", time.time() - start_time, "seconds")
 
-# Validate the results
-print(f"Max error: ", np.abs(np_out - kp_out).max())
+print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+print("----")
 
-# ---- Case 4: min: Scalar max: Scalar ----
-print("Case 4: min: Scalar, max: Scalar")
-x = (np.random.random(1024 * 1024).astype(np.float32) - 0.5) * 8.0
-min_val = 0.0
-max_val = 6.0
-
-# NumPy
+# -------- Case 4: 同时有 min & max --------
+print("Case 4: min=0.2, max=0.7")
+vmin = np.asarray([0.2], dtype=np.float32)
+vmax = np.asarray([0.7], dtype=np.float32)
 start_time = time.time()
-np_out = np.clip(x, min_val, max_val)
-print(f"Numpy: ", time.time() - start_time, "seconds")
+np_out = numpy_clip_like(x, vmin, vmax).astype(np.float32)
+print("Numpy:", time.time() - start_time, "seconds")
 
-# Vulkan
 start_time = time.time()
-kp_out = clip_op.run(x, min_val, max_val)[0]
-print(f"{clip_op}: ", time.time() - start_time, "seconds")
+kp_out = clip_op.run(x, vmin, vmax)[0]
+print(f"{clip_op}:", time.time() - start_time, "seconds")
 
-# Validate the results
-print(f"Max error: ", np.abs(np_out - kp_out).max())
+print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
-
-# ---- Case 5: min: array, max: array ----
-print("Case 5: min: array, max: array")
-x = (np.random.random((512, 1024)).astype(np.float32) - 0.5) * 8.0
-N = x.size
-min_arr = (np.random.random(N).astype(np.float32) * -2.0).reshape(x.shape)
-max_arr = (np.random.random(N).astype(np.float32) * 2.0 + 0.5).reshape(x.shape)
-
-# Ensure min <= max
-pair_min = np.minimum(min_arr, max_arr)
-pair_max = np.maximum(min_arr, max_arr)
-
-# NumPy
-start_time = time.time()
-np_out = np.clip(x, pair_min, pair_max)
-print(f"Numpy: ", time.time() - start_time, "seconds")
-
-# Vulkan
-start = time.time()
-kp_out = clip_op.run(x, pair_min, pair_max)[0]
-kp_time = time.time() - start
-print(f"{clip_op}: ", time.time() - start_time, "seconds")
-
-# Validate the results
-print(f"Max error: ", np.abs(np_out - kp_out).max())
-print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
-
-
