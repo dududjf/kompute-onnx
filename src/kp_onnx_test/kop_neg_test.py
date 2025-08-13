@@ -19,7 +19,7 @@ print("Numpy:", time.time() - start_time, "seconds")
 
 # Kompute 实现
 start_time = time.time()
-kp_out = neg_op.run(numpy_in)[0]
+kp_out = neg_op.run([numpy_in])
 print(f"{neg_op}:", time.time() - start_time, "seconds")
 
 # 精度验证
@@ -34,7 +34,7 @@ numpy_out = -numpy_in
 print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = neg_op.run(numpy_in)[0]
+kp_out = neg_op.run([numpy_in])
 print(f"{neg_op}:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
