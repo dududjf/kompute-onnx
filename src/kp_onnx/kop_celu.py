@@ -40,7 +40,7 @@ void main() {
         x = inputs[0]
         alpha = inputs[1] if len(inputs) > 1 else 1.0
 
-        x_flat = np.asarray(x, dtype=np.float32).reshape(-1)
+        x_flat = x.astype(np.float32).reshape(-1)
 
         tensor_in = self.manager.tensor(x_flat)
         tensor_out = self.manager.tensor(np.zeros_like(x_flat))
