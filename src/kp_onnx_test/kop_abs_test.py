@@ -8,14 +8,16 @@ mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
 abs_op = AbsOp(mgr, ['input'], ['output'])
-x = np.random.uniform(-5, 5, size=(640, 10240)).astype(np.float32)
 
-t0 = time.time()
-numpy_out = np.abs(x)
-print("ABS Numpy:", time.time() - t0, "seconds")
+numpy_in = np.random.uniform(-5, 5, (640, 10240)).astype(np.float32)
 
-t0 = time.time()
-kp_out = abs_op.run([x])
-print(f"{abs_op}:", time.time() - t0, "seconds")
+start_time = time.time()
+numpy_out = np.abs(numpy_in)
+print("ABS Numpy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+kp_out = abs_op.run([numpy_in])
+print(f"{abs_op}:", time.time() - start_time, "seconds")
+
 print("ABS Max error:", np.abs(numpy_out - kp_out).max())
 print("ABS All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
