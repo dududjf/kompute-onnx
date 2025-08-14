@@ -35,7 +35,7 @@ class BitwiseNotOp:
         int_view = numpy_in.view(np.int32)
         # 创建输出缓冲区
         output_array = np.empty_like(int_view)
-        # 使用 tensor_t() 创建张量，指定 device
+        # 使用 tensor_t() 创建张量
         tensor_in = self.manager.tensor_t(int_view)
         tensor_out = self.manager.tensor_t(output_array)
         algo = self.manager.algorithm([tensor_in, tensor_out], _bitwise_not_code)
@@ -45,8 +45,7 @@ class BitwiseNotOp:
             .record(kp.OpTensorSyncLocal([tensor_out])) \
             .eval()
         result = tensor_out.data()
-        if numpy_in.dtype == np.float32:
-            result = result.view(np.float32)
+        result = result.view(numpy_in.dtype)
         outputs = [result.reshape(tensor_shape)]
         del tensor_in
         del tensor_out
