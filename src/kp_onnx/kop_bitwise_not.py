@@ -1,15 +1,15 @@
 import kp
 import numpy as np
-from pyshader import python2shader, ivec2, f32, Array
+from pyshader import python2shader, ivec2, Array, i32
 
 
 @python2shader
 def compute_shader_bitwise_not(index=("input", "GlobalInvocationId", ivec2),
-                              in_data=("buffer", 0, Array(f32)),
-                              out_data=("buffer", 1, Array(f32))):
+                               in_data=("buffer", 0, Array(i32)),
+                               out_data=("buffer", 1, Array(i32))):
     i = index.x
-    #~x = -x - 1
-    out_data[i] = -in_data[i] - 1.0
+    out_data[i] = -in_data[i] - 1
+
 
 _bitwise_not_code = compute_shader_bitwise_not.to_spirv()
 
@@ -30,16 +30,24 @@ class BitwiseNotOp:
 
     def run(self, *inputs):
         tensor_shape = inputs[0].shape
-        numpy_in = inputs[0].reshape(-1).astype(np.float32)
-        tensor_in = self.manager.tensor(numpy_in)
-        tensor_out = self.manager.tensor(np.zeros_like(numpy_in, dtype=np.float32))
+        numpy_in = inputs[0].reshape(-1)
+        # 检查输入类型并创建视图
+        int_view = numpy_in.view(np.int32)
+        # 创建输出缓冲区
+        output_array = np.empty_like(int_view)
+        # 使用 tensor_t() 创建张量，指定 device
+        tensor_in = self.manager.tensor_t(int_view)
+        tensor_out = self.manager.tensor_t(output_array)
         algo = self.manager.algorithm([tensor_in, tensor_out], _bitwise_not_code)
         seq = self.manager.sequence()
         seq.record(kp.OpTensorSyncDevice([tensor_in])) \
-           .record(kp.OpAlgoDispatch(algo)) \
-           .record(kp.OpTensorSyncLocal([tensor_out])) \
-           .eval()
-        outputs = [tensor_out.data().reshape(tensor_shape).astype(np.int32)] #最后输出转换回 int32
+            .record(kp.OpAlgoDispatch(algo)) \
+            .record(kp.OpTensorSyncLocal([tensor_out])) \
+            .eval()
+        result = tensor_out.data()
+        if numpy_in.dtype == np.float32:
+            result = result.view(np.float32)
+        outputs = [result.reshape(tensor_shape)]
         del tensor_in
         del tensor_out
         return outputs

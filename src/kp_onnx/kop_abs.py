@@ -11,6 +11,7 @@ def compute_shader_abs(index=("input", "GlobalInvocationId", ivec2),
     i = index.x
     out_data[i] = abs(in_data[i])
 
+
 _abs_code = compute_shader_abs.to_spirv()
 
 

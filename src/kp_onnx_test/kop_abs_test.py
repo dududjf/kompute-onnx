@@ -3,6 +3,7 @@ import numpy as np
 import time
 from kp_onnx.kop_abs import AbsOp
 
+
 device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
@@ -30,7 +31,6 @@ int_in = np.random.randint(-1000, 1000, 1024 * 1024 * 16)
 start_time = time.time()
 int_numpy_out = np.abs(int_in)
 print("Numpy:", time.time() - start_time, "seconds")
-
 
 start_time = time.time()
 int_kp_out = abs_op.run(int_in)[0]

@@ -3,6 +3,7 @@ import numpy as np
 import time
 from kp_onnx.kop_tanh import TanhOp
 
+
 device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
@@ -25,7 +26,7 @@ print("kp_out:", kp_out)
 print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 #整数
-int_in = np.random.randint(-10, 10, 1024 * 1024 * 16, dtype=np.int32)
+int_in = np.random.randint(-1000, 1000, 1024 * 1024 * 16)
 
 start_time = time.time()
 int_numpy_out = np.tanh(int_in)

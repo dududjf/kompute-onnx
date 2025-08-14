@@ -11,6 +11,7 @@ def compute_shader_sign(index=("input", "GlobalInvocationId", ivec2),
     i = index.x
     out_data[i] = sign(in_data[i])
 
+
 _sign_code = compute_shader_sign.to_spirv()
 
 

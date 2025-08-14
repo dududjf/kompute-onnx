@@ -11,6 +11,7 @@ def compute_shader_sqrt(index=("input", "GlobalInvocationId", ivec2),
     i = index.x
     out_data[i] = sqrt(in_data[i])
 
+
 _sqrt_code = compute_shader_sqrt.to_spirv()
 
 

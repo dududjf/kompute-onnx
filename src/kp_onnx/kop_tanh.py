@@ -11,6 +11,7 @@ def compute_shader_tanh(index=("input", "GlobalInvocationId", ivec2),
     i = index.x
     out_data[i] = tanh(in_data[i])
 
+
 _tanh_code = compute_shader_tanh.to_spirv()
 
 
