@@ -43,20 +43,20 @@ void main() {
         flat_data = data.reshape(-1)
         alpha = np.asarray([inputs[1] if len(inputs) >= 2 and inputs[1] is not None else 1.0], dtype=np.float32)
 
-        tensor_input = self.manager.tensor(flat_data)                          # binding 0
+        tensor_input = self.manager.tensor(flat_data)                           # binding 0
         tensor_output = self.manager.tensor(np.empty_like(flat_data))           # binding 1
-        tensor_scalars = self.manager.tensor(alpha)                             # binding 2
-        tensors = [tensor_input, tensor_output, tensor_scalars]
+        tensor_alpha = self.manager.tensor(alpha)                             # binding 2
+        tensors = [tensor_input, tensor_output, tensor_alpha]
 
         algo = self.manager.algorithm(tensors, self.shader)
 
-        sequence = self.manager.sequence()
-        sequence.record(kp.OpTensorSyncDevice(tensors)) \
-                .record(kp.OpAlgoDispatch(algo)) \
-                .record(kp.OpTensorSyncLocal([tensor_output])) \
-                .eval()
+        seq = self.manager.sequence()
+        seq.record(kp.OpTensorSyncDevice(tensors)) \
+           .record(kp.OpAlgoDispatch(algo)) \
+           .record(kp.OpTensorSyncLocal([tensor_output])) \
+           .eval()
 
         outputs = [tensor_output.data().reshape(data.shape)]
 
-        del tensor_input, tensor_output, tensor_scalars,algo, sequence
+        del tensor_input, tensor_output, tensor_alpha, algo, seq
         return outputs

@@ -31,7 +31,7 @@ print("----")
 # ---------------- Case 2: alpha=0.5 ----------------
 print("Case 2: ELU alpha=0.5")
 x = np.random.random((1024, 1024))
-alpha = np.asarray(0.5, dtype=np.float32)
+alpha = 0.5
 print("Input shape:", x.shape)
 
 # Numpy

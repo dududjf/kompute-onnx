@@ -30,7 +30,7 @@ print("----")
 # ---------------- Case 2: alpha: 0.2 ----------------
 print("Case 2: LeakyReLU alpha=0.2")
 x = np.random.random((1024, 1024))
-alpha = np.asarray(0.2, dtype=np.float32)
+alpha = 0.2
 print("Input shape:", x.shape)
 
 start_time = time.time()
