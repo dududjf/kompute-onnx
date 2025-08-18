@@ -14,8 +14,8 @@ class EluOp:
 #version 450
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-layout(set=0, binding=0) buffer InBuf     { float in_data[];    };
-layout(set=0, binding=1) buffer OutBuf    { float out_data[]; };
+layout(set=0, binding=0) buffer InBuf     { float in_data[]; };
+layout(set=0, binding=1) buffer OutBuf    { float out_data[];};
 layout(set=0, binding=2) buffer Scalars   { float scalars[]; };
 
 void main() {
@@ -45,7 +45,7 @@ void main() {
 
         tensor_input = self.manager.tensor(flat_data)                           # binding 0
         tensor_output = self.manager.tensor(np.empty_like(flat_data))           # binding 1
-        tensor_alpha = self.manager.tensor(alpha)                             # binding 2
+        tensor_alpha = self.manager.tensor(alpha)                               # binding 2
         tensors = [tensor_input, tensor_output, tensor_alpha]
 
         algo = self.manager.algorithm(tensors, self.shader)

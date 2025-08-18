@@ -62,7 +62,7 @@ print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
 kp_out = clip_op.run(x, vmin, vmax)[0]
-print(f"{clip_op}:", time.time() - start_time, "seconds")
+print(f"{clip_op}: ", time.time() - start_time, "seconds")
 
 print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))

@@ -18,7 +18,7 @@ print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
 kp_out = erf_op.run(numpy_in)[0]
-print(f"{erf_op}:", time.time() - start_time, "seconds")
+print(f"{erf_op}: ", time.time() - start_time, "seconds")
 
 print(numpy_out)
 print(kp_out)
