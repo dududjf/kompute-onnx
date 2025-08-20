@@ -17,8 +17,8 @@ class ReluOp:
 #version 450
 layout (local_size_x = 1) in;
 
-layout (std430, set = 0, binding = 0) readonly buffer InBuf  { float in_buf[]; };
-layout (std430, set = 0, binding = 1) writeonly buffer OutBuf { float out_buf[]; };
+layout (set = 0, binding = 0) readonly buffer InBuf  { float in_buf[]; };
+layout (set = 0, binding = 1) writeonly buffer OutBuf { float out_buf[]; };
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;

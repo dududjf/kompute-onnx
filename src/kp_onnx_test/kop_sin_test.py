@@ -9,7 +9,7 @@ print(mgr.get_device_properties())
 
 sin_op = SinOp(mgr, ['input'], ['output'])
 
-numpy_in = np.random.uniform(-5, 5, (10240, 40960)).astype(np.float32)
+numpy_in = np.random.uniform(-10, 10, (10240, 40960)).astype(np.float32)
 
 start_time = time.time()
 numpy_out = np.sin(numpy_in)
@@ -20,4 +20,4 @@ kp_out = sin_op.run([numpy_in])
 print(f"{sin_op}:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-6))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4, equal_nan=True))

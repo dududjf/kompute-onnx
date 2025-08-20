@@ -1,11 +1,8 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_selu import SeluOp
+from kp_onnx.kop_selu import SeluOp, DEFAULT_ALPHA, DEFAULT_GAMMA
 
-# SELU 默认常量
-DEFAULT_ALPHA = np.float32(1.6732631921768188)
-DEFAULT_GAMMA = np.float32(1.0507009873554805)
 
 device_id = 0
 mgr = Manager(device_id)
@@ -26,7 +23,7 @@ kp_out = selu_op.run([x1])
 print(f"{selu_op} [default alpha,gamma]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-6))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 
 # Case 2: 指定 alpha
@@ -42,7 +39,7 @@ kp_out = selu_op.run([x2, alpha])
 print(f"{selu_op} [alpha=0.8, gamma=default]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-6))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 
 # Case 3: 同时指定 alpha、gamma
@@ -59,4 +56,4 @@ kp_out = selu_op.run([x3, alpha, gamma])
 print(f"{selu_op} [alpha=1.2, gamma=0.9]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-6))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))

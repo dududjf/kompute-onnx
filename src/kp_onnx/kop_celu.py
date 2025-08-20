@@ -2,6 +2,8 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
+DEFAULT_ALPHA = 1.0
+
 
 class CeluOp:
     """
@@ -17,13 +19,13 @@ class CeluOp:
 #version 450
 layout (local_size_x = 1) in;
 
-layout (std430, set = 0, binding = 0) readonly buffer InBuf  { float in_buf[]; };
-layout (std430, set = 0, binding = 1) writeonly buffer OutBuf { float out_buf[]; };
-layout (std430, set = 0, binding = 2) readonly buffer Scalars { float scalars[]; };
+layout (set = 0, binding = 0) readonly buffer InBuf  { float in_buf[]; };
+layout (set = 0, binding = 1) writeonly buffer OutBuf { float out_buf[]; };
+
+layout (constant_id = 0) const float alpha = 0;
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
-    float alpha = scalars[0];
     float x = in_buf[idx];
     // CELU(x) = x (x>=0) ; alpha * (exp(x/alpha) - 1) (x<0)
     out_buf[idx] = (x >= 0.0) ? x : (alpha * (exp(x / alpha) - 1.0));
@@ -38,29 +40,29 @@ void main() {
 
     def run(self, inputs):
         x = inputs[0]
-        alpha = inputs[1] if len(inputs) > 1 else 1.0
 
-        x_flat = x.astype(np.float32).reshape(-1)
+        alpha = float(inputs[1]) if len(inputs) > 1 else DEFAULT_ALPHA
+
+        x_flat = x.reshape(-1).astype(np.float32)
 
         tensor_in = self.manager.tensor(x_flat)
         tensor_out = self.manager.tensor(np.zeros_like(x_flat))
-        tensor_scalars = self.manager.tensor(np.array([alpha], dtype=np.float32))
 
         workgroup = (x_flat.size, 1, 1)
         algo = self.manager.algorithm(
-            [tensor_in, tensor_out, tensor_scalars],
+            [tensor_in, tensor_out],
             self.shader,
             workgroup,
-            [],
+            [alpha],
             []
         )
 
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tensor_in, tensor_scalars])) \
+        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
             .record(kp.OpAlgoDispatch(algo)) \
             .record(kp.OpTensorSyncLocal([tensor_out])) \
             .eval()
 
         output_tensor = tensor_out.data().reshape(x.shape)
-        del tensor_in, tensor_out, tensor_scalars
+        del tensor_in, tensor_out
         return [output_tensor]

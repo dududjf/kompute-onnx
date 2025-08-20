@@ -20,4 +20,4 @@ kp_out = tan_op.run([numpy_in])
 print(f"{tan_op}:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-6))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))

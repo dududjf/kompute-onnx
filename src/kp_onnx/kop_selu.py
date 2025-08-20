@@ -2,6 +2,10 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
+# Selu 默认常量
+DEFAULT_ALPHA = float(1.6732631921768188)
+DEFAULT_GAMMA = float(1.0507009873554805)
+
 
 class SeluOp:
     """
@@ -17,17 +21,17 @@ class SeluOp:
 #version 450
 layout (local_size_x = 1) in;
 
-layout (std430, set = 0, binding = 0) readonly buffer InBuf  { float in_buf[]; };
-layout (std430, set = 0, binding = 1) writeonly buffer OutBuf { float out_buf[]; };
-layout (std430, set = 0, binding = 2) readonly buffer Scalars { float scalars[]; };
+layout (set = 0, binding = 0) readonly buffer InBuf  { float in_buf[]; };
+layout (set = 0, binding = 1) writeonly buffer OutBuf { float out_buf[]; };
+
+layout (constant_id = 0) const float alpha = 0;
+layout (constant_id = 1) const float gamma = 0;
 
 void main() {
     uint idx = gl_GlobalInvocationID.x;
-    float alpha = scalars[0];
-    float gamma = scalars[1];
     float x = in_buf[idx];
     // SELU(x) = gamma * ( x (x>=0) ; alpha*(exp(x)-1) (x<0) )
-    float y = (x >= 0.0) ? x : (alpha * (exp(x) - 1.0));
+    float y = x >= 0.0 ? x : alpha * (exp(x) - 1.0);
     out_buf[idx] = gamma * y;
 }
 """)
@@ -42,31 +46,30 @@ void main() {
         # 允许 run([x])、run([x, alpha])、run([x, alpha, gamma])
         x = inputs[0]
 
-        #  指定alpha、gamma值，或使用 SELU 默认常量（float32）
-        alpha = np.float32(inputs[1]) if len(inputs) > 1 else np.float32(1.6732631921768188)
-        gamma = np.float32(inputs[2]) if len(inputs) > 2 else np.float32(1.0507009873554805)
+        #  指定alpha、gamma值，或使用 SELU 默认常量
+        alpha = float(inputs[1]) if len(inputs) > 1 else DEFAULT_ALPHA
+        gamma = float(inputs[2]) if len(inputs) > 2 else DEFAULT_GAMMA
 
         x_flat = x.reshape(-1).astype(np.float32)
 
         tensor_in = self.manager.tensor(x_flat)
         tensor_out = self.manager.tensor(np.zeros_like(x_flat))
-        tensor_scalars = self.manager.tensor(np.array([alpha, gamma], dtype=np.float32))
 
         workgroup = (x_flat.size, 1, 1)
         algo = self.manager.algorithm(
-            [tensor_in, tensor_out, tensor_scalars],
+            [tensor_in, tensor_out],
             self.shader,
             workgroup,
-            [],
+            [alpha, gamma],
             []
         )
 
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tensor_in, tensor_scalars])) \
+        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
            .record(kp.OpAlgoDispatch(algo)) \
            .record(kp.OpTensorSyncLocal([tensor_out])) \
            .eval()
 
         output_tensor = tensor_out.data().reshape(x.shape)
-        del tensor_in, tensor_out, tensor_scalars
+        del tensor_in, tensor_out
         return [output_tensor]

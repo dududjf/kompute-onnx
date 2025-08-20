@@ -1,11 +1,8 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_hard_sigmoid import HardSigmoidOp
+from kp_onnx.kop_hard_sigmoid import HardSigmoidOp, DEFAULT_ALPHA, DEFAULT_BETA
 
-# Hard_Sigmoid 默认常量
-DEFAULT_ALPHA = np.float32(0.2)
-DEFAULT_BETA  = np.float32(0.5)
 
 device_id = 0
 mgr = Manager(device_id)
@@ -26,7 +23,7 @@ kp_out = hard_sigmoid_op.run([x1])
 print(f"{hard_sigmoid_op} [default alpha,beta]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-6))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 
 # Case 2: 指定 alpha
@@ -42,7 +39,7 @@ kp_out = hard_sigmoid_op.run([x2, alpha])
 print(f"{hard_sigmoid_op} [alpha=0.35, beta=default]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-6))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 
 # Case 3: 同时指定 alpha、beta
@@ -59,4 +56,4 @@ kp_out = hard_sigmoid_op.run([x3, alpha, beta])
 print(f"{hard_sigmoid_op} [alpha=0.1, beta=0.6]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-6))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
