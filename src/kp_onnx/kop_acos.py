@@ -30,8 +30,6 @@ void main() {
         return self.__repr__()
 
     def run(self, *inputs):
-        assert len(inputs) >= 1, "AcosOp needs the input tensor"
-
         data = inputs[0].astype(np.float32)
 
         tensor_in = self.manager.tensor(data)                   # binding 0
@@ -48,5 +46,5 @@ void main() {
 
         outputs = [tensor_out.data().reshape(data.shape)]
 
-        del tensor_in, tensor_out, algo, seq
+        del tensor_in, tensor_out
         return outputs

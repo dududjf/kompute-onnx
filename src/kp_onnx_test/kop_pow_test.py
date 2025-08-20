@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from src.kp_onnx.kop_pow import PowOp
+from kp_onnx.kop_pow import PowOp
 
 device_id = 0
 mgr = Manager(device_id)

@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from src.kp_onnx.kop_floor import FloorOp
+from kp_onnx.kop_floor import FloorOp
 
 device_id = 1
 mgr = Manager(device_id)
@@ -9,9 +9,9 @@ print(mgr.get_device_properties())
 
 floor_op = FloorOp(mgr, ['input'], ['output'])
 
-x = np.random.random((10240, 10240))
+x = np.random.random((10240, 10240)).astype(np.float32)
 start_time = time.time()
-np_out = np.floor(x).astype(np.float32)
+np_out = np.floor(x)
 print("Numpy: ", time.time() - start_time, "seconds")
 
 start_time = time.time()

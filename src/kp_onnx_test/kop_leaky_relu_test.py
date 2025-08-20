@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from src.kp_onnx.kop_leaky_relu import LeakyReluOp
+from kp_onnx.kop_leaky_relu import LeakyReluOp
 
 
 device_id = 0
@@ -12,11 +12,11 @@ leaky_relu_op = LeakyReluOp(mgr, ['data', 'alpha'], ['output'])
 
 # ---------------- Case 1: alpha: None ----------------
 print("Case 1: LeakyReLU alpha: None")
-x = np.random.random((1024, 1024))
+x = np.random.random((1024, 1024)).astype(np.float32)
 print("Input shape:", x.shape)
 
 start_time = time.time()
-np_out = np.where(x >= 0.0, x, 0.01 * x).astype(np.float32)
+np_out = np.where(x >= 0.0, x, 0.01 * x)
 print("Numpy: ", time.time() - start_time, "seconds")
 
 start_time = time.time()
@@ -34,7 +34,7 @@ alpha = 0.2
 print("Input shape:", x.shape)
 
 start_time = time.time()
-np_out = np.where(x >= 0.0, x, alpha * x).astype(np.float32)
+np_out = np.where(x >= 0.0, x, alpha * x)
 print("Numpy: ", time.time() - start_time, "seconds")
 
 start_time = time.time()

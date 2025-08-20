@@ -1,7 +1,7 @@
 import numpy as np
 import time
 from kp import Manager
-from src.kp_onnx.kop_log import LogOp
+from kp_onnx.kop_log import LogOp
 
 device_id = 1
 mgr = Manager(device_id)
@@ -9,7 +9,7 @@ print(mgr.get_device_properties())
 
 log_op = LogOp(mgr, ['input'], ['output'])
 
-x = np.random.random((1024, 1024))
+x = np.random.random((1024, 1024)).astype(np.float32)
 print("input shape:", x.shape)
 start_time = time.time()
 numpy_out = np.log(x)

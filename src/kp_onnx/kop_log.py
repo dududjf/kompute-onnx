@@ -30,7 +30,6 @@ class LogOp:
         return f"LogOp({device_name})"
 
     def run(self, *inputs):
-        assert len(inputs) == 1, "LogOp only accepts one input"
         tensor_shape = inputs[0].shape
         numpy_in = inputs[0].reshape(-1).astype(np.float32)
         tensor_in = self.manager.tensor(numpy_in)

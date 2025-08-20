@@ -1,20 +1,20 @@
 from kp import Manager
 import numpy as np
 import time
-from src.kp_onnx.kop_asin import AsinOp
+from kp_onnx.kop_asin import AsinOp
 
 device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-asin_op = AsinOp(mgr, ['data'], ['output'])
+asin_op = AsinOp(mgr, ['input'], ['output'])
 
 print("Case 1: asin on 2D array")
-x = np.random.uniform(-1.0, 1.0, (4096, 4096))
+x = np.random.uniform(-1.0, 1.0, (4096, 4096)).astype(np.float32)
 
 # NumPy
 start_time = time.time()
-np_out = np.arcsin(x).astype(np.float32)
+np_out = np.arcsin(x)
 print("Numpy:", time.time() - start_time, "seconds")
 
 # AsinOp

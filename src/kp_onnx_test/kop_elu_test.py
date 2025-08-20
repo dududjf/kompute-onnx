@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from src.kp_onnx.kop_elu import EluOp
+from kp_onnx.kop_elu import EluOp
 
 device_id = 0
 mgr = Manager(device_id)
@@ -11,12 +11,12 @@ elu_op = EluOp(mgr, ['data', 'alpha'], ['output'])
 
 # ---------------- Case 1: alpha: None ----------------
 print("Case 1: ELU alpha: None")
-x = np.random.random((1024, 1024))
+x = np.random.random((1024, 1024)).astype(np.float32)
 print("Input shape:", x.shape)
 
 # Numpy
 start_time = time.time()
-np_out = np.where(x > 0, x, 1.0 * (np.exp(x) - 1.0)).astype(np.float32)
+np_out = np.where(x > 0, x, 1.0 * (np.exp(x) - 1.0))
 print("Numpy: ", time.time() - start_time, "seconds")
 
 # Kompute
@@ -36,7 +36,7 @@ print("Input shape:", x.shape)
 
 # Numpy
 start_time = time.time()
-np_out = np.where(x > 0, x, alpha * (np.exp(x) - 1.0)).astype(np.float32)
+np_out = np.where(x > 0, x, alpha * (np.exp(x) - 1.0))
 print("Numpy: ", time.time() - start_time, "seconds")
 
 # Kompute

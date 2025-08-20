@@ -1,6 +1,6 @@
 import kp
 import numpy as np
-from src.kp_onnx.shader_utils import compile_source
+from .shader_utils import compile_source
 
 
 class MatMulOp:

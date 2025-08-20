@@ -53,8 +53,6 @@ void main() {
         return self.__repr__()
 
     def run(self, *inputs):
-        assert len(inputs) >= 1, "ClipOp needs at least the input tensor"
-
         data = inputs[0].astype(np.float32)
         flat_data = data.reshape(-1)
 
@@ -108,5 +106,5 @@ void main() {
            .eval()
 
         outputs = [tensor_out.data().reshape(data.shape)]
-        del tensor_in, tensor_out, tensor_min, tensor_max, algo, seq
+        del tensor_in, tensor_out, tensor_min, tensor_max
         return outputs

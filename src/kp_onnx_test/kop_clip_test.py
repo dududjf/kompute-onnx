@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from src.kp_onnx.kop_clip import ClipOp
+from kp_onnx.kop_clip import ClipOp
 
 device_id = 0
 mgr = Manager(device_id)
@@ -21,12 +21,12 @@ def numpy_clip_like(x, vmin=None, vmax=None):
     return np.clip(x, vmin, vmax)
 
 
-x = np.random.random(32 * 1024 * 1024)
+x = np.random.random(32 * 1024 * 1024).astype(np.float32)
 
 # -------- Case 1: min: None, max: None --------
 print("Case 1: min=None, max=None")
 start_time = time.time()
-np_out = numpy_clip_like(x, None, None).astype(np.float32)
+np_out = numpy_clip_like(x, None, None)
 print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
@@ -41,7 +41,7 @@ print("----")
 print("Case 2: min=0.2, max=None")
 vmin = np.asarray(0.2, dtype=np.float32)
 start_time = time.time()
-np_out = numpy_clip_like(x, vmin, None).astype(np.float32)
+np_out = numpy_clip_like(x, vmin, None)
 print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
@@ -57,7 +57,7 @@ print("Case 3: min=0.2, max=0.7")
 vmin = np.asarray(0.2, dtype=np.float32)
 vmax = np.asarray(0.7, dtype=np.float32)
 start_time = time.time()
-np_out = numpy_clip_like(x, vmin, vmax).astype(np.float32)
+np_out = numpy_clip_like(x, vmin, vmax)
 print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()

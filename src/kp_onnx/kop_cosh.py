@@ -3,7 +3,7 @@ import kp
 from .shader_utils import compile_source
 
 
-class ReciprocalOp:
+class CoshOp:
     def __init__(self, manager: kp.Manager, input: list[str], output: list[str]):
         self.manager = manager
         self.input = input
@@ -18,13 +18,13 @@ layout(set=0, binding=1) buffer OutBuf { float out_data[]; };
 
 void main() {
     uint i = gl_GlobalInvocationID.x;
-    
-    out_data[i] = 1.0 / in_data[i];
+    float x = in_data[i];
+    out_data[i] = cosh(x);
 }
 """)
 
     def __repr__(self):
-        return f"ReciprocalOp({self.manager.get_device_properties()['device_name']})"
+        return f"CoshOp({self.manager.get_device_properties()['device_name']})"
 
     def __str__(self):
         return self.__repr__()
@@ -44,7 +44,7 @@ void main() {
            .record(kp.OpTensorSyncLocal([tensor_out])) \
            .eval()
 
-        outputs = [tensor_out.data().reshape(data.shape)]
+        output = [tensor_out.data().reshape(data.shape)]
 
         del tensor_in, tensor_out
-        return outputs
+        return output
