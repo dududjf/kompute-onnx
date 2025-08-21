@@ -21,7 +21,7 @@ def numpy_clip_like(x, vmin=None, vmax=None):
     return np.clip(x, vmin, vmax)
 
 
-x = np.random.random(32 * 1024 * 1024).astype(np.float32)
+x = np.random.random((3, 1024, 1024)).astype(np.float32)
 
 # -------- Case 1: min: None, max: None --------
 print("Case 1: min=None, max=None")
