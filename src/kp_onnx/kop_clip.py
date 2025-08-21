@@ -15,13 +15,13 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(set=0, binding=0) buffer InBuf   { float in_data[];  };
 layout(set=0, binding=1) buffer OutBuf  { float out_data[]; };
-layout(set=0, binding=2) buffer MinBuf  { float min_value[];};
+
+layout(constant_id=0) const float min_value = 0;
 
 void main() {
     uint i = gl_GlobalInvocationID.x;
     float v = in_data[i];
-    float m = min_value[0];
-    out_data[i] = (v < m) ? m : v;
+    out_data[i] = (v < min_value) ? min_value : v;
 }
 """)
 
@@ -31,17 +31,16 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout(set=0, binding=0) buffer InBuf   { float in_data[];  };
 layout(set=0, binding=1) buffer OutBuf  { float out_data[]; };
-layout(set=0, binding=2) buffer MinBuf  { float min_value[];};
-layout(set=0, binding=3) buffer MaxBuf  { float max_value[];};
+
+layout(constant_id=0) const float min_value = 0;
+layout(constant_id=1) const float max_value = 0;
 
 void main() {
     uint i = gl_GlobalInvocationID.x;
     float v = in_data[i];
-    float m = min_value[0];
-    float M = max_value[0];
 
-    v = (v < m) ? m : v;
-    v = (v > M) ? M : v;
+    v = (v < min_value) ? min_value : v;
+    v = (v > max_value) ? max_value : v;
     out_data[i] = v;
 }
 """)
@@ -68,43 +67,34 @@ void main() {
             assert max_val.ndim == 0 or max_val.size == 1, "max must be scalar"
 
         # case 1: min and max are None
-        if (min_val is None) and (max_val is None):
+        if min_val is None and max_val is None:
             outputs = [data]
             return outputs
 
-        # case 2：only min
-        if (min_val is not None) and (max_val is None):
-            tensor_in = self.manager.tensor(flat_data)
-            tensor_out = self.manager.tensor(np.empty_like(flat_data))
-            tensor_min = self.manager.tensor(min_val)
-            tensors = [tensor_in, tensor_out, tensor_min]
+        tensor_in = self.manager.tensor(flat_data)
+        tensor_out = self.manager.tensor(np.empty_like(flat_data))
+        tensors = [tensor_in, tensor_out]
+        seq = self.manager.sequence()
 
-            algo = self.manager.algorithm(tensors, self.shader_min)
-            seq = self.manager.sequence()
+        # case 2：only min
+        if min_val is not None and max_val is None:
+            algo = self.manager.algorithm(tensors, self.shader_min, spec_consts=[min_val])
             seq.record(kp.OpTensorSyncDevice(tensors)) \
                .record(kp.OpAlgoDispatch(algo)) \
                .record(kp.OpTensorSyncLocal([tensor_out])) \
                .eval()
 
             outputs = [tensor_out.data().reshape(data.shape)]
-            del tensor_in, tensor_out, tensor_min, algo, seq
+            del tensor_in, tensor_out
             return outputs
 
         # case 3: min and max
-        tensor_in = self.manager.tensor(flat_data)
-        tensor_out = self.manager.tensor(np.empty_like(flat_data))
-        tensor_min = self.manager.tensor(min_val)
-        tensor_max = self.manager.tensor(max_val)
-        tensors = [tensor_in, tensor_out, tensor_min, tensor_max]
-
-        algo = self.manager.algorithm(tensors, self.shader_minmax)
-
-        seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tensor_in, tensor_min, tensor_max])) \
+        algo = self.manager.algorithm(tensors, self.shader_minmax, spec_consts=[min_val, max_val])
+        seq.record(kp.OpTensorSyncDevice(tensors)) \
            .record(kp.OpAlgoDispatch(algo)) \
            .record(kp.OpTensorSyncLocal([tensor_out])) \
            .eval()
 
         outputs = [tensor_out.data().reshape(data.shape)]
-        del tensor_in, tensor_out, tensor_min, tensor_max
+        del tensor_in, tensor_out
         return outputs

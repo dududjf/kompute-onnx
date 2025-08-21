@@ -9,8 +9,6 @@ print(mgr.get_device_properties())
 
 cosh_op = CoshOp(mgr, ['input'], ['output'])
 
-
-print("Case 1: cosh on 2D array")
 x = np.random.uniform(-5.0, 5.0, (4096, 4096)).astype(np.float32)
 
 # NumPy baseline

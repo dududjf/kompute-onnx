@@ -9,7 +9,6 @@ print(mgr.get_device_properties())
 
 round_op = RoundOp(mgr, ['input'], ['output'])
 
-print("Case 1: round on 2D array (ties-to-even)")
 x = np.random.uniform(-5, 5, (1024, 1024)).astype(np.float32)
 
 # Numpy baseline (np.round default: ties-to-even)

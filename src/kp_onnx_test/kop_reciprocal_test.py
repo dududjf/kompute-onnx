@@ -9,7 +9,8 @@ print(mgr.get_device_properties())
 
 reciprocal_op = ReciprocalOp(mgr, ['input'], ['output'])
 
-x = np.random.random((10240, 10240)).astype(np.float32)
+x = np.random.random(1024 * 1024).astype(np.float32)
+x = np.concatenate((x, np.empty_like(x)))
 
 start_time = time.time()
 np_out = np.reciprocal(x)
