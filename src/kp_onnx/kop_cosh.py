@@ -31,13 +31,12 @@ void main() {
 
     def run(self, *inputs):
         data = inputs[0].astype(np.float32)
-
-        tensor_in = self.manager.tensor(data)                   # binding 0
-        tensor_out = self.manager.tensor(np.empty_like(data))   # binding 1
+        flat_data = data.reshape(-1)
+        tensor_in = self.manager.tensor(flat_data)                   # binding 0
+        tensor_out = self.manager.tensor(np.empty_like(flat_data))   # binding 1
         tensors = [tensor_in, tensor_out]
 
         algo = self.manager.algorithm(tensors, self.shader)
-
         seq = self.manager.sequence()
         seq.record(kp.OpTensorSyncDevice([tensor_in])) \
            .record(kp.OpAlgoDispatch(algo)) \
@@ -45,6 +44,5 @@ void main() {
            .eval()
 
         output = [tensor_out.data().reshape(data.shape)]
-
         del tensor_in, tensor_out
         return output

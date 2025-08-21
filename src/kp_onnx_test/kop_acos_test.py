@@ -10,7 +10,7 @@ print(mgr.get_device_properties())
 
 acos_op = AcosOp(mgr, ['input'], ['output'])
 
-x = np.random.uniform(-1.0, 1.0, (4096, 4096)).astype(np.float32)
+x = np.random.uniform(-1.0, 1.0, (3, 3, 4096, 4096)).astype(np.float32)
 
 # NumPy
 start_time = time.time()

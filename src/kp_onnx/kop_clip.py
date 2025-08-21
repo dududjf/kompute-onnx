@@ -79,7 +79,7 @@ void main() {
         # case 2：only min
         if min_val is not None and max_val is None:
             algo = self.manager.algorithm(tensors, self.shader_min, spec_consts=[min_val])
-            seq.record(kp.OpTensorSyncDevice(tensors)) \
+            seq.record(kp.OpTensorSyncDevice([tensor_in])) \
                .record(kp.OpAlgoDispatch(algo)) \
                .record(kp.OpTensorSyncLocal([tensor_out])) \
                .eval()
@@ -90,7 +90,7 @@ void main() {
 
         # case 3: min and max
         algo = self.manager.algorithm(tensors, self.shader_minmax, spec_consts=[min_val, max_val])
-        seq.record(kp.OpTensorSyncDevice(tensors)) \
+        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
            .record(kp.OpAlgoDispatch(algo)) \
            .record(kp.OpTensorSyncLocal([tensor_out])) \
            .eval()

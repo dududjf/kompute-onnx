@@ -3,7 +3,7 @@ import numpy as np
 import time
 from kp_onnx.kop_floor import FloorOp
 
-device_id = 1
+device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 

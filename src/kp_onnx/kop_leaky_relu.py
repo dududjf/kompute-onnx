@@ -42,19 +42,17 @@ void main() {
         flat_data = data.reshape(-1)
         alpha = float(inputs[1]) if len(inputs) >= 2 and inputs[1] is not None else DEFAULT_ALPHA
 
-        tensor_input = self.manager.tensor(flat_data)                            # binding 0
-        tensor_output = self.manager.tensor(np.empty_like(flat_data))            # binding 1
-        tensors = [tensor_input, tensor_output]
+        tensor_in = self.manager.tensor(flat_data)                            # binding 0
+        tensor_out = self.manager.tensor(np.empty_like(flat_data))            # binding 1
+        tensors = [tensor_in, tensor_out]
 
         algo = self.manager.algorithm(tensors, self.shader, spec_consts=[alpha])
-
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice(tensors)) \
-                .record(kp.OpAlgoDispatch(algo)) \
-                .record(kp.OpTensorSyncLocal([tensor_output])) \
-                .eval()
+        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
+            .record(kp.OpAlgoDispatch(algo)) \
+            .record(kp.OpTensorSyncLocal([tensor_out])) \
+            .eval()
 
-        outputs = [tensor_output.data().reshape(data.shape)]
-
-        del tensor_input, tensor_output
+        outputs = [tensor_out.data().reshape(data.shape)]
+        del tensor_in, tensor_out
         return outputs

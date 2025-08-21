@@ -12,14 +12,12 @@ def compute_shader_log(index=("input", "GlobalInvocationId", ivec2),
     out_data[i] = log(in_data[i])
 
 
-_log_code = compute_shader_log.to_spirv()
-
-
 class LogOp:
     def __init__(self, manager: kp.Manager, input: list[str], output: list[str]):
         self.manager = manager
         self.input = input
         self.output = output
+        self.shader = compute_shader_log.to_spirv()
 
     def __repr__(self):
         device_name = self.manager.get_device_properties()['device_name']
@@ -30,16 +28,17 @@ class LogOp:
         return f"LogOp({device_name})"
 
     def run(self, *inputs):
-        tensor_shape = inputs[0].shape
-        numpy_in = inputs[0].reshape(-1).astype(np.float32)
-        tensor_in = self.manager.tensor(numpy_in)
-        tensor_out = self.manager.tensor(np.zeros_like(numpy_in))
-        algo = self.manager.algorithm([tensor_in, tensor_out], _log_code)
+        data = inputs[0].astype(np.float32)
+        flat_data = data.reshape(-1)
+        tensor_in = self.manager.tensor(flat_data)
+        tensor_out = self.manager.tensor(np.zeros_like(flat_data))
+
+        algo = self.manager.algorithm([tensor_in, tensor_out], self.shader)
         seq = self.manager.sequence()
         seq.record(kp.OpTensorSyncDevice([tensor_in])) \
            .record(kp.OpAlgoDispatch(algo)) \
            .record(kp.OpTensorSyncLocal([tensor_out])) \
            .eval()
-        outputs = [tensor_out.data().reshape(tensor_shape)]
+        outputs = [tensor_out.data().reshape(data.shape)]
         del tensor_in, tensor_out
         return outputs
