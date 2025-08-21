@@ -55,16 +55,8 @@ void main() {
         data = inputs[0].astype(np.float32)
         flat_data = data.reshape(-1)
 
-        min_scalar = inputs[1] if len(inputs) > 1 else None
-        max_scalar = inputs[2] if len(inputs) > 2 else None
-
-        min_val = np.asarray(min_scalar, dtype=np.float32) if min_scalar is not None else None
-        if min_val is not None:
-            assert min_val.ndim == 0 or min_val.size == 1, "min must be scalar"
-
-        max_val = np.asarray(max_scalar, dtype=np.float32) if max_scalar is not None else None
-        if max_val is not None:
-            assert max_val.ndim == 0 or max_val.size == 1, "max must be scalar"
+        min_val = float(inputs[1]) if len(inputs) > 1 else None
+        max_val = float(inputs[2]) if len(inputs) > 2 else None
 
         # case 1: min and max are None
         if min_val is None and max_val is None:
