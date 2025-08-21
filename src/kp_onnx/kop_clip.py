@@ -53,7 +53,6 @@ void main() {
 
     def run(self, *inputs):
         data = inputs[0].astype(np.float32)
-        flat_data = data.reshape(-1)
 
         min_val = float(inputs[1]) if len(inputs) > 1 else None
         max_val = float(inputs[2]) if len(inputs) > 2 else None
@@ -63,6 +62,7 @@ void main() {
             outputs = [data]
             return outputs
 
+        flat_data = data.reshape(-1)
         tensor_in = self.manager.tensor(flat_data)
         tensor_out = self.manager.tensor(np.empty_like(flat_data))
         tensors = [tensor_in, tensor_out]
