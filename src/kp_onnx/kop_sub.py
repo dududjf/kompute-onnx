@@ -1,6 +1,6 @@
 import kp
 import numpy as np
-from .shader_utils import compile_source
+from .shader_utils import compile_source, broadcast_to
 
 
 class SubOp:
@@ -80,16 +80,25 @@ void main()
             else:
                 assert new_shape_1[i] == new_shape_2[i], f"SubOp requires input {i} of the same shape"
                 input_shape.append(new_shape_1[i])
+
+        numpy_in_1 = input_1.reshape(-1).astype(np.float32)
+        tensor_in_1 = self.manager.tensor(numpy_in_1)
+        new_in_1 = tensor_in_1
+        algorithms_1, next_tensors_1 = [], []
         if input_shape[:-2] != new_shape_1[:-2] and not all(e == 1 for e in new_shape_1[:-2]):
-            new_shape_1 = input_shape[:-2] + list(new_shape_1[-2:])
-            numpy_in_1 = np.broadcast_to(input_1, new_shape_1).reshape(-1).astype(np.float32)
-        else:
-            numpy_in_1 = input_1.reshape(-1).astype(np.float32)
+            final_shape_1 = input_shape[:-2] + list(new_shape_1[-2:])
+            new_in_1 = broadcast_to(tensor_in_1, new_shape_1, final_shape_1, algorithms_1, next_tensors_1, self.manager)
+            new_shape_1 = final_shape_1
+
+        numpy_in_2 = input_2.reshape(-1).astype(np.float32)
+        tensor_in_2 = self.manager.tensor(numpy_in_2)
+        new_in_2 = tensor_in_2
+        algorithms_2, next_tensors_2 = [], []
         if input_shape[:-2] != new_shape_2[:-2] and not all(e == 1 for e in new_shape_2[:-2]):
-            new_shape_2 = input_shape[:-2] + list(new_shape_2[-2:])
-            numpy_in_2 = np.broadcast_to(input_2, new_shape_2).reshape(-1).astype(np.float32)
-        else:
-            numpy_in_2 = input_2.reshape(-1).astype(np.float32)
+            final_shape_2 = input_shape[:-2] + list(new_shape_2[-2:])
+            new_in_2 = broadcast_to(tensor_in_2, new_shape_2, final_shape_2, algorithms_2, next_tensors_2, self.manager)
+            new_shape_2 = final_shape_2
+
         if len(new_shape_1) == 1:
             size_x_1 = new_shape_1[0]
             size_y_1 = 1
@@ -105,38 +114,37 @@ void main()
             size_y_2 = new_shape_2[1]
             size_z_2 = 1
         else:
-            size_x_1 = 1
-            for e in new_shape_1[:-2]:
-                size_x_1 *= e
+            size_x_1 = np.prod(new_shape_1[:-2])
             size_y_1 = new_shape_1[-2]
             size_z_1 = new_shape_1[-1]
-            size_x_2 = 1
-            for e in new_shape_2[:-2]:
-                size_x_2 *= e
+            size_x_2 = np.prod(new_shape_2[:-2])
             size_y_2 = new_shape_2[-2]
             size_z_2 = new_shape_2[-1]
-        tensor_in_1 = self.manager.tensor(numpy_in_1)
-        tensor_in_2 = self.manager.tensor(numpy_in_2)
-        size = 1
-        for e in input_shape:
-            size *= e
+
+        size = np.prod(input_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
         workgroup = (max(size_x_1, size_x_2), max(size_y_1, size_y_2), max(size_z_1, size_z_2))
-        # print(f"{new_shape_1=} {new_shape_2=} {workgroup=}")
-        # print([size_x_1, size_y_1, size_z_1, size_x_2, size_y_2, size_z_2])
-        algo = self.manager.algorithm([tensor_in_1, tensor_in_2, tensor_out],
+        algo = self.manager.algorithm([new_in_1, new_in_2, tensor_out],
                                       self.compiled_shader,
                                       workgroup,
                                       [size_x_1, size_y_1, size_z_1, size_x_2, size_y_2, size_z_2],
                                       [])
+
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tensor_in_1, tensor_in_2])) \
-           .record(kp.OpAlgoDispatch(algo)) \
-           .record(kp.OpTensorSyncLocal([tensor_out])) \
-           .eval()
+        seq.record(kp.OpTensorSyncDevice([tensor_in_1, tensor_in_2]))
+        for alg_1 in algorithms_1:
+            seq.record(kp.OpAlgoDispatch(alg_1))
+        for alg_2 in algorithms_2:
+            seq.record(kp.OpAlgoDispatch(alg_2))
+        seq.record(kp.OpAlgoDispatch(algo))
+        seq.record(kp.OpTensorSyncLocal([tensor_out]))
+        seq.eval()
         output = tensor_out.data()
         outputs = [output.reshape(input_shape)]
+
         del tensor_in_1
+        del next_tensors_1
         del tensor_in_2
+        del next_tensors_2
         del tensor_out
         return outputs
