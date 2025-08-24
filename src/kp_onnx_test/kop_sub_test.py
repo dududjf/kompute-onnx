@@ -6,6 +6,7 @@ from kp_onnx.kop_sub import SubOp
 device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
+sub_op = SubOp(mgr)
 
 print('Case 1')
 numpy_in_1 = np.random.random((1023, 15))
@@ -15,7 +16,6 @@ start_time = time.time()
 numpy_out = numpy_in_1 - numpy_in_2
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
-sub_op = SubOp(mgr, ['input1', 'input2'], ['output'])
 start_time = time.time()
 kp_out = sub_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{sub_op}:", kp_out.shape, time.time() - start_time, "seconds")
@@ -29,7 +29,6 @@ start_time = time.time()
 numpy_out = numpy_in_1 - numpy_in_2
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
-sub_op = SubOp(mgr, ['input1', 'input2'], ['output'])
 start_time = time.time()
 kp_out = sub_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{sub_op}:", kp_out.shape, time.time() - start_time, "seconds")
@@ -43,7 +42,6 @@ start_time = time.time()
 numpy_out = numpy_in_1 - numpy_in_2
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
-sub_op = SubOp(mgr, ['input1', 'input2'], ['output'])
 start_time = time.time()
 kp_out = sub_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{sub_op}:", kp_out.shape, time.time() - start_time, "seconds")
@@ -57,7 +55,6 @@ start_time = time.time()
 numpy_out = numpy_in_1 - numpy_in_2
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
-sub_op = SubOp(mgr, ['input1', 'input2'], ['output'])
 start_time = time.time()
 kp_out = sub_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{sub_op}:", kp_out.shape, time.time() - start_time, "seconds")
@@ -71,7 +68,6 @@ start_time = time.time()
 numpy_out = numpy_in_1 - numpy_in_2
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
-sub_op = SubOp(mgr, ['input1', 'input2'], ['output'])
 start_time = time.time()
 kp_out = sub_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{sub_op}:", kp_out.shape, time.time() - start_time, "seconds")
@@ -85,7 +81,6 @@ start_time = time.time()
 numpy_out = numpy_in_1 - numpy_in_2
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
-sub_op = SubOp(mgr, ['input1', 'input2'], ['output'])
 start_time = time.time()
 kp_out = sub_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{sub_op}:", kp_out.shape, time.time() - start_time, "seconds")
