@@ -1,6 +1,9 @@
 from kp import Manager
 import numpy as np
 import time
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from kp_onnx.kop_sign import SignOp
 
 
@@ -8,7 +11,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-sign_op = SignOp(mgr, ['input'], ['output'])
+sign_op = SignOp(mgr)
 
 #浮点数
 numpy_in = np.random.uniform(-1000, 1000, 1024 * 1024 * 16)
