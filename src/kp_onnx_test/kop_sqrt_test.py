@@ -8,7 +8,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-sqrt_op = SqrtOp(mgr, ['input'], ['output'])
+sqrt_op = SqrtOp(mgr)
 
 numpy_in = np.random.random(1024 * 1024 * 16)
 
@@ -20,6 +20,4 @@ start_time = time.time()
 kp_out = sqrt_op.run(numpy_in)[0]
 print(f"{sqrt_op}:", time.time() - start_time, "seconds")
 
-print("numpy_out:", numpy_out)
-print("kp_out:", kp_out)
 print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
