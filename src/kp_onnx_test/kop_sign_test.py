@@ -1,9 +1,6 @@
 from kp import Manager
 import numpy as np
 import time
-import sys
-import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from kp_onnx.kop_sign import SignOp
 
 
