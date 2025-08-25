@@ -6,12 +6,8 @@ DEFAULT_ALPHA = float(1.0)
 
 
 class EluOp:
-    def __init__(self, manager: kp.Manager, input: list[str], output: list[str]):
+    def __init__(self, manager: kp.Manager):
         self.manager = manager
-        self.input = input
-        self.output = output
-
-        self.local_size_x = None
         self.shader = compile_source("""
 #version 450
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -38,7 +34,6 @@ void main() {
         return self.__repr__()
 
     def run(self, *inputs):
-        # run(x) or run(x, alpha)
         data = inputs[0].astype(np.float32)
         flat_data = data.reshape(-1)
         alpha = float(inputs[1]) if len(inputs) >= 2 and inputs[1] is not None else DEFAULT_ALPHA
@@ -57,3 +52,15 @@ void main() {
         outputs = [tensor_out.data().reshape(data.shape)]
         del tensor_in, tensor_out
         return outputs
+
+    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
+             updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
+        tensor_in = input_tensors[0][0]
+        tensor_shape = input_tensors[0][1]
+        size = np.prod(tensor_shape)
+        tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
+        alpha = float(input_tensors[1][0])\
+            if len(input_tensors) >= 2 and input_tensors[1][0] is not None else DEFAULT_ALPHA
+        updated_tensors.append(tensor_out)
+        updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], self.shader, spec_consts=[alpha]))
+        return [(tensor_out, tensor_shape)]

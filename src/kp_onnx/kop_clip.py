@@ -4,11 +4,8 @@ from .shader_utils import compile_source
 
 
 class ClipOp:
-    def __init__(self, manager: kp.Manager, input: list[str], output: list[str]):
+    def __init__(self, manager: kp.Manager):
         self.manager = manager
-        self.input = input
-        self.output = output
-
         self.shader_min = compile_source("""
 #version 450
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -90,3 +87,27 @@ void main() {
         outputs = [tensor_out.data().reshape(data.shape)]
         del tensor_in, tensor_out
         return outputs
+
+    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
+             updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
+        tensor_in = input_tensors[0][0]
+        tensor_shape = input_tensors[0][1]
+        size = np.prod(tensor_shape)
+        tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
+
+        min_val = float(input_tensors[1][0]) if len(input_tensors) > 1 else None
+        max_val = float(input_tensors[2][0]) if len(input_tensors) > 2 else None
+
+        if min_val is None and max_val is None:
+            return [(tensor_out, tensor_shape)]
+
+        if min_val is not None and max_val is None:
+            updated_tensors.append(tensor_out)
+            updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out],
+                                                             self.shader_min, spec_consts=[min_val]))
+            return [(tensor_out, tensor_shape)]
+
+        updated_tensors.append(tensor_out)
+        updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out],
+                                                         self.shader_minmax, spec_consts=[min_val, max_val]))
+        return [(tensor_out, tensor_shape)]

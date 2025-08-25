@@ -27,10 +27,8 @@ _erf_code = compute_shader_erf.to_spirv()
 
 
 class ErfOp:
-    def __init__(self, manager: kp.Manager, input: list[str], output: list[str]):
+    def __init__(self, manager: kp.Manager):
         self.manager = manager
-        self.input = input
-        self.output = output
 
     def __repr__(self):
         device_name = self.manager.get_device_properties()['device_name']
@@ -55,3 +53,13 @@ class ErfOp:
         del tensor_in
         del tensor_out
         return outputs
+
+    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
+             updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
+        tensor_in = input_tensors[0][0]
+        tensor_shape = input_tensors[0][1]
+        size = np.prod(tensor_shape)
+        tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
+        updated_tensors.append(tensor_out)
+        updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], _erf_code))
+        return [(tensor_out, tensor_shape)]

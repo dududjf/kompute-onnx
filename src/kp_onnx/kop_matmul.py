@@ -4,10 +4,8 @@ from .shader_utils import compile_source
 
 
 class MatMulOp:
-    def __init__(self, manager: kp.Manager, input: list[str], output: list[str]):
+    def __init__(self, manager: kp.Manager):
         self.manager = manager
-        self.input = input
-        self.output = output
 
         props = manager.get_device_properties()
         max_workgroup_invocation = props['max_work_group_invocations']
@@ -48,8 +46,8 @@ void main()
     if(row >= size_m || col >= size_n) return;
     float acc = 0.0;
     uint start_1 = row * size_k;
-    for(uint i = 0, start_2 = 0; i < size_k; i++, start_2 += size_n)
-        acc += in_tensor_1[start_1 + i] * in_tensor_2[start_2 + col];
+    for(uint i = 0, start_2 = col; i < size_k; i++, start_2 += size_n)
+        acc += in_tensor_1[start_1 + i] * in_tensor_2[start_2];
     out_tensor[(row * size_n) + col] = acc;
 }}
 """
@@ -77,9 +75,9 @@ void main()
     if(row >= size_m || col >= size_n || batch >= size_b) return;
     float acc = 0.0;
     uint start_1 = (batch * size_m * size_k) + (row * size_k);
-    uint start_2 = batch * size_k * size_n;
+    uint start_2 = (batch * size_k * size_n) + col;
     for(uint i = 0; i < size_k; i++, start_2 += size_n)
-        acc += in_tensor_1[start_1 + i] * in_tensor_2[start_2 + col];
+        acc += in_tensor_1[start_1 + i] * in_tensor_2[start_2];
     out_tensor[(batch * size_m * size_n) + (row * size_n) + col] = acc;
 }}
 """
@@ -95,10 +93,7 @@ void main()
     def run(self, *inputs):
         assert len(inputs) == 2, "MatMulOp requires 2 inputs"
         if inputs[0].ndim >= 2 and inputs[1].ndim == 2:
-            rows = inputs[0].shape[0]
-            if inputs[0].ndim > 2:
-                for i in range(1, inputs[0].ndim - 1):
-                    rows *= inputs[0].shape[i]
+            rows = np.prod(inputs[0].shape[:-1])
             cols = inputs[0].shape[-1]
             nrows = inputs[1].shape[0]
             ncols = inputs[1].shape[1]
@@ -116,7 +111,8 @@ void main()
                 # compile shader
                 self.shader = compile_source(
                     self.shader_code1.format(local_size_x=local_size_x, local_size_y=local_size_y))
-                self.workgroup = ((rows+local_size_x-1) // local_size_x, (ncols+local_size_y-1) // local_size_y, 1)
+                self.workgroup = (
+                    (rows + local_size_x - 1) // local_size_x, (ncols + local_size_y - 1) // local_size_y, 1)
 
             algo = self.manager.algorithm([tensor_in_1, tensor_in_2, tensor_out],
                                           self.shader, self.workgroup, self.sizes, [])
@@ -139,10 +135,7 @@ void main()
             nrows = inputs[1].shape[-2]
             ncols = inputs[1].shape[-1]
             assert cols == nrows, f"MatMulOp requires #columns {cols} of the 1st and #rows {nrows} of the 2nd to equal"
-            blocks = inputs[0].shape[0]
-            if inputs[0].ndim > 3:
-                for i in range(1, inputs[0].ndim - 2):
-                    blocks *= inputs[0].shape[i]
+            blocks = np.prod(inputs[0].shape[:-2])
             in_1 = inputs[0].reshape(-1).astype(np.float32)
             in_2 = inputs[1].reshape(-1).astype(np.float32)
             tensor_in_1 = self.manager.tensor(in_1)
@@ -156,7 +149,8 @@ void main()
                 # compile shader
                 self.shader = compile_source(
                     self.shader_code2.format(local_size_x=local_size_x, local_size_y=local_size_y))
-                self.workgroup = ((rows+local_size_x-1) // local_size_x, (ncols+local_size_y-1) // local_size_y, blocks)
+                self.workgroup = (
+                    (rows + local_size_x - 1) // local_size_x, (ncols + local_size_y - 1) // local_size_y, blocks)
 
             algo = self.manager.algorithm([tensor_in_1, tensor_in_2, tensor_out],
                                           self.shader, self.workgroup, self.sizes, [])
@@ -172,3 +166,64 @@ void main()
             del tensor_out
 
         return outputs
+
+    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
+             updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
+        assert len(input_tensors) == 2, "MatMulOp requires 2 inputs"
+        tensor_in_1 = input_tensors[0][0]
+        tensor_in_2 = input_tensors[1][0]
+        shape_1 = input_tensors[0][1]
+        shape_2 = input_tensors[1][1]
+
+        if len(shape_1) >= 2 and len(shape_2) == 2:
+            rows = np.prod(shape_1[:-1])
+            cols = shape_1[-1]
+            nrows = shape_2[0]
+            ncols = shape_2[1]
+            assert cols == nrows, f"MatMulOp requires #columns {cols} of the 1st and #rows {nrows} of the 2nd to equal"
+            tensor_out = self.manager.tensor(np.zeros(rows * ncols, dtype=np.float32))
+
+            if self.shader is None or self.sizes != [rows, cols, ncols]:
+                self.sizes = [rows, cols, ncols]
+                local_size_x = min(self.local_size_x, rows)
+                local_size_y = min(self.local_size_y, ncols)
+                # compile shader
+                self.shader = compile_source(
+                    self.shader_code1.format(local_size_x=local_size_x, local_size_y=local_size_y))
+                self.workgroup = (
+                    (rows + local_size_x - 1) // local_size_x, (ncols + local_size_y - 1) // local_size_y, 1)
+
+            updated_tensors.append(tensor_out)
+            updated_algorithms.append(self.manager.algorithm([tensor_in_1, tensor_in_2, tensor_out],
+                                                             self.shader, self.workgroup, self.sizes, []))
+
+            output_shape = shape_1[:-1] + [ncols]
+            return [(tensor_out, output_shape)]
+
+        else:
+            assert 2 < len(shape_1) == len(shape_2) and shape_1[:-2] == shape_2[:-2], \
+                f"MatMulOp requires the prefix dimensions {shape_1[:-2]} and {shape_2[:-2]} to equal"
+            rows = shape_1[-2]
+            cols = shape_1[-1]
+            nrows = shape_2[-2]
+            ncols = shape_2[-1]
+            assert cols == nrows, f"MatMulOp requires #columns {cols} of the 1st and #rows {nrows} of the 2nd to equal"
+            blocks = np.prod(shape_1[:-2])
+            tensor_out = self.manager.tensor(np.zeros(blocks * rows * ncols, dtype=np.float32))
+
+            if self.shader is None or self.sizes != [rows, cols, ncols, blocks]:
+                self.sizes = [rows, cols, ncols, blocks]
+                local_size_x = min(self.local_size_x, rows)
+                local_size_y = min(self.local_size_y, ncols)
+                # compile shader
+                self.shader = compile_source(
+                    self.shader_code2.format(local_size_x=local_size_x, local_size_y=local_size_y))
+                self.workgroup = (
+                    (rows + local_size_x - 1) // local_size_x, (ncols + local_size_y - 1) // local_size_y, blocks)
+
+            updated_tensors.append(tensor_out)
+            updated_algorithms.append(self.manager.algorithm([tensor_in_1, tensor_in_2, tensor_out],
+                                                             self.shader, self.workgroup, self.sizes, []))
+
+            output_shape = shape_1[:-1] + [ncols]
+            return [(tensor_out, output_shape)]
