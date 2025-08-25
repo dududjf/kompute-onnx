@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-exp_op = ExpOp(mgr, ['input'], ['output'])
+exp_op = ExpOp(mgr)
 
 numpy_in = np.random.uniform(-5, 5, (640, 10240)).astype(np.float32)
 

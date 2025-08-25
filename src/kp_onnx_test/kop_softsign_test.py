@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-softsign_op = SoftsignOp(mgr, ['input'], ['output'])
+softsign_op = SoftsignOp(mgr)
 
 numpy_in = np.random.uniform(-10, 10, (10240, 40960)).astype(np.float32)
 

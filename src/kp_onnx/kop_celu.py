@@ -10,11 +10,9 @@ class CeluOp:
     onnx::Celu 的 Kompute 实现（逐元素一元 | float32）
     """
 
-    def __init__(self, manager: kp.Manager, input: list[str], output: list[str]):
+    def __init__(self, manager: kp.Manager):
+        self.alpha = DEFAULT_ALPHA
         self.manager = manager
-        self.input = input
-        self.output = output
-
         self.shader = compile_source("""
 #version 450
 layout (local_size_x = 1) in;
@@ -40,9 +38,7 @@ void main() {
 
     def run(self, inputs):
         x = inputs[0]
-
         alpha = float(inputs[1]) if len(inputs) > 1 else DEFAULT_ALPHA
-
         x_flat = x.reshape(-1).astype(np.float32)
 
         tensor_in = self.manager.tensor(x_flat)
@@ -66,3 +62,20 @@ void main() {
         output_tensor = tensor_out.data().reshape(x.shape)
         del tensor_in, tensor_out
         return [output_tensor]
+
+    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
+             updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
+        tensor_in, shape = input_tensors[0]
+        total = np.prod(shape)
+        tensor_out = self.manager.tensor(np.zeros(total, dtype=np.float32))
+        updated_tensors.append(tensor_out)
+
+        workgroup = (total, 1, 1)
+        updated_algorithms.append(self.manager.algorithm(
+            [tensor_in, tensor_out],
+            self.shader,
+            workgroup,
+            [self.alpha],
+            []
+        ))
+        return [(tensor_out, shape)]

@@ -8,7 +8,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-hard_sigmoid_op = HardSigmoidOp(mgr, ['input'], ['output'])
+hard_sigmoid_op = HardSigmoidOp(mgr)
 
 
 # Case 1: 单一输入参数，不指定alpha、beta

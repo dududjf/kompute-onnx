@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-tan_op = TanOp(mgr, ['input'], ['output'])
+tan_op = TanOp(mgr)
 
 numpy_in = np.random.uniform(-1.2, 1.2, (10240, 40960)).astype(np.float32)
 

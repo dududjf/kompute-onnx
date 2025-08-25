@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-sin_op = SinOp(mgr, ['input'], ['output'])
+sin_op = SinOp(mgr)
 
 numpy_in = np.random.uniform(-10, 10, (10240, 40960)).astype(np.float32)
 

@@ -7,9 +7,9 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-abs_op = AbsOp(mgr, ['input'], ['output'])
+abs_op = AbsOp(mgr)
 
-numpy_in = np.random.uniform(-5, 5, (6400, 102400)).astype(np.float32)
+numpy_in = np.random.uniform(-5, 5, (640, 10240)).astype(np.float32)
 
 start_time = time.time()
 numpy_out = np.abs(numpy_in)
