@@ -47,7 +47,8 @@ class AcoshOp:
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in = input_tensors[0][0]
         tensor_shape = input_tensors[0][1]
-        tensor_out = self.manager.tensor(np.zeros_like(tensor_in))
+        size = np.prod(tensor_shape)
+        tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
         updated_tensors.append(tensor_out)
         updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], _acosh_code))
         return [(tensor_out, tensor_shape)]
