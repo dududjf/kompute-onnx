@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-round_op = RoundOp(mgr, ['input'], ['output'])
+round_op = RoundOp(mgr)
 
 x = np.random.uniform(-5, 5, (1024, 1024)).astype(np.float32)
 

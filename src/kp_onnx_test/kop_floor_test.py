@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-floor_op = FloorOp(mgr, ['input'], ['output'])
+floor_op = FloorOp(mgr)
 
 x = np.random.random((10240, 10240)).astype(np.float32)
 start_time = time.time()

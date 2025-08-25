@@ -8,7 +8,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-leaky_relu_op = LeakyReluOp(mgr, ['data', 'alpha'], ['output'])
+leaky_relu_op = LeakyReluOp(mgr)
 
 # ---------------- Case 1: alpha: None ----------------
 print("Case 1: LeakyReLU alpha: None")

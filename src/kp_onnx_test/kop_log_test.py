@@ -7,7 +7,7 @@ device_id = 1
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-log_op = LogOp(mgr, ['input'], ['output'])
+log_op = LogOp(mgr)
 
 x = np.random.random((1024, 1024)).astype(np.float32)
 print("input shape:", x.shape)

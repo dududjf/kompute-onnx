@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-reciprocal_op = ReciprocalOp(mgr, ['input'], ['output'])
+reciprocal_op = ReciprocalOp(mgr)
 
 
 x = np.concatenate((np.random.random(1024 * 1024), np.zeros(10))).astype(np.float32)

@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-asin_op = AsinOp(mgr, ['input'], ['output'])
+asin_op = AsinOp(mgr)
 
 x = np.random.uniform(-1.0, 1.0, (4096, 4096)).astype(np.float32)
 

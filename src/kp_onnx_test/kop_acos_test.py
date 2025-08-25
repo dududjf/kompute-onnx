@@ -8,7 +8,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-acos_op = AcosOp(mgr, ['input'], ['output'])
+acos_op = AcosOp(mgr)
 
 x = np.random.uniform(-1.0, 1.0, (3, 3, 4096, 4096)).astype(np.float32)
 

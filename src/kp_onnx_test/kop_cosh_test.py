@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-cosh_op = CoshOp(mgr, ['input'], ['output'])
+cosh_op = CoshOp(mgr)
 
 x = np.random.uniform(-5.0, 5.0, (4096, 4096)).astype(np.float32)
 

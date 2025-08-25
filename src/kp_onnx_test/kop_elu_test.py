@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-elu_op = EluOp(mgr, ['data', 'alpha'], ['output'])
+elu_op = EluOp(mgr)
 
 # ---------------- Case 1: alpha: None ----------------
 print("Case 1: ELU alpha: None")
