@@ -95,8 +95,8 @@ void main() {
         size = np.prod(tensor_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
 
-        min_val = float(input_tensors[1][0]) if len(input_tensors) > 1 else None
-        max_val = float(input_tensors[2][0]) if len(input_tensors) > 2 else None
+        min_val = float(input_tensors[1][0].data()) if len(input_tensors) > 1 else None
+        max_val = float(input_tensors[2][0].data()) if len(input_tensors) > 2 else None
 
         if min_val is None and max_val is None:
             return [(tensor_out, tensor_shape)]

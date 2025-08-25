@@ -7,7 +7,7 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-clip_op = ClipOp(mgr, ['data', 'min', 'max'], ['output'])
+clip_op = ClipOp(mgr)
 
 
 # Unified numpy reference implementation (can handle None)

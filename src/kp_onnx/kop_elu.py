@@ -59,7 +59,7 @@ void main() {
         tensor_shape = input_tensors[0][1]
         size = np.prod(tensor_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
-        alpha = float(input_tensors[1][0])\
+        alpha = float(input_tensors[1][0].data())\
             if len(input_tensors) >= 2 and input_tensors[1][0] is not None else DEFAULT_ALPHA
         updated_tensors.append(tensor_out)
         updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], self.shader, spec_consts=[alpha]))
