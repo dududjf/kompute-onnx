@@ -55,7 +55,7 @@ void main() {
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         assert len(input_tensors) == 2, "PowOp requires two inputs"
         tensor_in = input_tensors[0][0]
-        exponent = float(input_tensors[1][0])
+        exponent = float(input_tensors[1][0].data())
         tensor_shape = input_tensors[0][1]
         size = np.prod(tensor_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
@@ -66,3 +66,4 @@ void main() {
                                                          [exponent],
                                                          []))
         return [(tensor_out, tensor_shape)]
+
