@@ -101,7 +101,7 @@ void main()
 
         outputs = [tensor_out.data().reshape(out_dims)]
 
-        del tensor_in, tensor_out, algo, seq
+        del tensor_in, tensor_out
         return outputs
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
