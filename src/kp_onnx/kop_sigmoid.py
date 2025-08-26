@@ -3,6 +3,7 @@ import numpy as np
 from pyshader import python2shader, ivec2, f32, Array
 from pyshader.stdlib import exp, min, abs
 
+
 @python2shader
 def compute_shader_sigmoid(index=("input", "GlobalInvocationId", ivec2),
                            in_data=("buffer", 0, Array(f32)),
