@@ -13,8 +13,6 @@ class HardSigmoidOp:
     """
 
     def __init__(self, manager: kp.Manager):
-        self.alpha = DEFAULT_ALPHA
-        self.beta = DEFAULT_BETA
         self.manager = manager
         self.shader = compile_source("""
 #version 450
@@ -77,6 +75,8 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, shape = input_tensors[0]
+        alpha = float(input_tensors[1][0].data()) if len(input_tensors) > 1 else DEFAULT_ALPHA
+        beta  = float(input_tensors[2][0].data()) if len(input_tensors) > 2 else DEFAULT_BETA
         total = np.prod(shape)
         tensor_out = self.manager.tensor(np.zeros(total, dtype=np.float32))
         updated_tensors.append(tensor_out)
@@ -86,7 +86,7 @@ void main() {
             [tensor_in, tensor_out],
             self.shader,
             workgroup,
-            [self.alpha, self.beta],
+            [alpha, beta],
             []
         ))
         return [(tensor_out, shape)]
