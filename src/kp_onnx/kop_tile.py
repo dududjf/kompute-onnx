@@ -119,7 +119,7 @@ void main()
         sx_out, sy_out, sz_out = self._sizes3(output_shape)
 
         out_size = np.prod(output_shape) if output_shape else 1
-        tensor_out = self.manager.tensor(np.empty(out_size, dtype=np.float32))
+        tensor_out = self.manager.tensor(np.zeros(out_size, dtype=np.float32))
         updated_tensors.append(tensor_out)
 
         workgroup = (sx_out, sy_out, sz_out)
