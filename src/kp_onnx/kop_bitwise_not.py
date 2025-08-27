@@ -70,26 +70,22 @@ void main() {
         del tensor_in, tensor_out
         return [result]
 
-    def fuse(self,
-             input_tensors: list[tuple[kp.Tensor, list[int]]],
-             updated_algorithms: list[kp.Algorithm],
+    def fuse(self,input_tensors: list[tuple[kp.Tensor, list[int]]],updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
 
-        tensor_in = input_tensors[0][0]
-        tensor_shape = input_tensors[0][1]
+        tensor_in, tensor_shape = input_tensors[0]
         size = np.prod(tensor_shape)
 
-        try:
-            dtype = tensor_in.dtype
-        except AttributeError:
-            dtype = np.float32
+        dtype_enum = tensor_in.data_type()
 
-        if dtype == np.float32:
+        if dtype_enum == kp.Tensor.TensorDataTypes.eFloat:
             tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
             updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], self.shader_float))
-        else:
+        elif dtype_enum == kp.Tensor.TensorDataTypes.eInt:
             tensor_out = self.manager.tensor_t(np.zeros(size, dtype=np.int32))
             updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], _bitwise_not_code_int))
+        else:
+            raise TypeError(f"Unsupported tensor data type {dtype_enum}. Only float32 and int32 supported.")
 
         updated_tensors.append(tensor_out)
         return [(tensor_out, tensor_shape)]
