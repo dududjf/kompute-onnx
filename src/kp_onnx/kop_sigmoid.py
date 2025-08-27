@@ -10,9 +10,7 @@ def compute_shader_sigmoid(index=("input", "GlobalInvocationId", ivec2),
                            out_data=("buffer", 1, Array(f32))):
     i = index.x
     x = in_data[i]
-    absx = abs(x)
-    neg_absx = -absx
-    out_data[i] = exp(min(x, 0.0)) / (1.0 + exp(neg_absx))
+    out_data[i] = exp(min(x, 0.0)) / (1.0 + exp(-abs(x)))
 
 
 _sigmoid_code = compute_shader_sigmoid.to_spirv()
