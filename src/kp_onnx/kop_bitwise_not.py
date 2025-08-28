@@ -52,8 +52,8 @@ void main() {
             algo = self.manager.algorithm(tensors, self.shader_float)
 
         elif flat.dtype == np.int32:
-            tensor_in = self.manager.tensor_t(flat.astype(np.int32))
-            tensor_out = self.manager.tensor_t(np.empty_like(flat, dtype=np.int32))
+            tensor_in = self.manager.tensor_t(flat.astype(np.int32), tensor_type=kp.TensorTypes.device)
+            tensor_out = self.manager.tensor_t(np.empty_like(flat, dtype=np.int32), tensor_type=kp.TensorTypes.device)
             tensors = [tensor_in, tensor_out]
             algo = self.manager.algorithm(tensors, _bitwise_not_code_int)
 
@@ -70,22 +70,24 @@ void main() {
         del tensor_in, tensor_out
         return [result]
 
-    def fuse(self,input_tensors: list[tuple[kp.Tensor, list[int]]],updated_algorithms: list[kp.Algorithm],
+    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]],updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-
-        tensor_in, tensor_shape = input_tensors[0]
+        tensor_in = input_tensors[0][0]
+        tensor_shape = input_tensors[0][1]
         size = np.prod(tensor_shape)
+        dtype = tensor_in.data().dtype
 
-        dtype_enum = tensor_in.data_type()
-
-        if dtype_enum == kp.Tensor.TensorDataTypes.eFloat:
+        if dtype == np.float32:
             tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
+            updated_tensors.append(tensor_out)
             updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], self.shader_float))
-        elif dtype_enum == kp.Tensor.TensorDataTypes.eInt:
-            tensor_out = self.manager.tensor_t(np.zeros(size, dtype=np.int32))
-            updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], _bitwise_not_code_int))
-        else:
-            raise TypeError(f"Unsupported tensor data type {dtype_enum}. Only float32 and int32 supported.")
 
-        updated_tensors.append(tensor_out)
+        elif dtype == np.int32:
+            tensor_out = self.manager.tensor_t(np.zeros(size, dtype=np.int32), tensor_type=kp.TensorTypes.device)
+            updated_tensors.append(tensor_out)
+            updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], _bitwise_not_code_int))
+
+        else:
+            raise TypeError(f"Unsupported tensor dtype {dtype}. Only float32 and int32 supported.")
+
         return [(tensor_out, tensor_shape)]
