@@ -65,8 +65,9 @@ def broadcast_to(tensor_in, org_shape, new_shape, out_algorithms, out_next_tenso
     end = len(org_shape) - 1
     while end >= 0:
         start = end
-        while start >= 0 and org_shape[start] == 1 and new_shape[start] > 1:
-            start -= 1
+        if org_shape[start] == 1 and new_shape[start] > 1:
+            while start >= 0 and org_shape[start] == 1:
+                start -= 1
         if start < end:
             tensor_in = tensor_out
             group_x = np.prod(org_shape[:start+1]) if start >= 0 else 1
