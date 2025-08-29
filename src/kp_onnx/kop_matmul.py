@@ -92,80 +92,30 @@ void main()
 
     def run(self, *inputs):
         assert len(inputs) == 2, "MatMulOp requires 2 inputs"
-        if inputs[0].ndim >= 2 and inputs[1].ndim == 2:
-            rows = np.prod(inputs[0].shape[:-1])
-            cols = inputs[0].shape[-1]
-            nrows = inputs[1].shape[0]
-            ncols = inputs[1].shape[1]
-            assert cols == nrows, f"MatMulOp requires #columns {cols} of the 1st and #rows {nrows} of the 2nd to equal"
-            in_1 = inputs[0].reshape(-1).astype(np.float32)
-            in_2 = inputs[1].reshape(-1).astype(np.float32)
-            tensor_in_1 = self.manager.tensor(in_1)
-            tensor_in_2 = self.manager.tensor(in_2)
-            tensor_out = self.manager.tensor(np.zeros(rows * ncols, dtype=np.float32))
 
-            if self.shader is None or self.sizes != [rows, cols, ncols]:
-                self.sizes = [rows, cols, ncols]
-                local_size_x = min(self.local_size_x, rows)
-                local_size_y = min(self.local_size_y, ncols)
-                # compile shader
-                self.shader = compile_source(
-                    self.shader_code1.format(local_size_x=local_size_x, local_size_y=local_size_y))
-                self.workgroup = (
-                    (rows + local_size_x - 1) // local_size_x, (ncols + local_size_y - 1) // local_size_y, 1)
+        input_tensors = []
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape)))
 
-            algo = self.manager.algorithm([tensor_in_1, tensor_in_2, tensor_out],
-                                          self.shader, self.workgroup, self.sizes, [])
-            seq = self.manager.sequence()
-            seq.record(kp.OpTensorSyncDevice([tensor_in_1, tensor_in_2])) \
-                .record(kp.OpAlgoDispatch(algo)) \
-                .record(kp.OpTensorSyncLocal([tensor_out])) \
-                .eval()
-            out_shape = inputs[0].shape[:-1] + (ncols,)
-            outputs = [tensor_out.data().reshape(out_shape)]
-            del tensor_in_1
-            del tensor_in_2
-            del tensor_out
+        updated_algorithms, updated_tensors = [], []
+        output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
+        tensor_out, output_shape = output_tensor_and_shape[0]
 
-        else:
-            assert 2 < inputs[0].ndim == inputs[1].ndim and inputs[0].shape[:-2] == inputs[1].shape[:-2], \
-                f"MatMulOp requires the prefix dimensions {inputs[0].shape[:-2]} and {inputs[1].shape[:-2]} to equal"
-            rows = inputs[0].shape[-2]
-            cols = inputs[0].shape[-1]
-            nrows = inputs[1].shape[-2]
-            ncols = inputs[1].shape[-1]
-            assert cols == nrows, f"MatMulOp requires #columns {cols} of the 1st and #rows {nrows} of the 2nd to equal"
-            blocks = np.prod(inputs[0].shape[:-2])
-            in_1 = inputs[0].reshape(-1).astype(np.float32)
-            in_2 = inputs[1].reshape(-1).astype(np.float32)
-            tensor_in_1 = self.manager.tensor(in_1)
-            tensor_in_2 = self.manager.tensor(in_2)
-            tensor_out = self.manager.tensor(np.zeros(blocks * rows * ncols, dtype=np.float32))
+        seq = self.manager.sequence()
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+        for alg in updated_algorithms:
+            seq.record(kp.OpAlgoDispatch(alg))
+        seq.record(kp.OpTensorSyncLocal([tensor_out]))
+        seq.eval()
 
-            if self.shader is None or self.sizes != [rows, cols, ncols, blocks]:
-                self.sizes = [rows, cols, ncols, blocks]
-                local_size_x = min(self.local_size_x, rows)
-                local_size_y = min(self.local_size_y, ncols)
-                # compile shader
-                self.shader = compile_source(
-                    self.shader_code2.format(local_size_x=local_size_x, local_size_y=local_size_y))
-                self.workgroup = (
-                    (rows + local_size_x - 1) // local_size_x, (ncols + local_size_y - 1) // local_size_y, blocks)
+        output = tensor_out.data().reshape(output_shape)
 
-            algo = self.manager.algorithm([tensor_in_1, tensor_in_2, tensor_out],
-                                          self.shader, self.workgroup, self.sizes, [])
-            seq = self.manager.sequence()
-            seq.record(kp.OpTensorSyncDevice([tensor_in_1, tensor_in_2])) \
-                .record(kp.OpAlgoDispatch(algo)) \
-                .record(kp.OpTensorSyncLocal([tensor_out])) \
-                .eval()
-            out_shape = inputs[0].shape[:-1] + (ncols,)
-            outputs = [tensor_out.data().reshape(out_shape)]
-            del tensor_in_1
-            del tensor_in_2
-            del tensor_out
-
-        return outputs
+        for tensor, _ in input_tensors:
+            del tensor
+        del updated_tensors
+        return [output]
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
