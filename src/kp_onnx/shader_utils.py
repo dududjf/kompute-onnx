@@ -62,12 +62,17 @@ def broadcast_to(tensor_in, org_shape, new_shape, out_algorithms, out_next_tenso
     """
     tensor_out = tensor_in
     block_1 = 1
-    for i in reversed(range(len(org_shape))):
-        if org_shape[i] == 1 and new_shape[i] > 1:
+    end = len(org_shape) - 1
+    while end >= 0:
+        start = end
+        while start >= 0 and org_shape[start] == 1 and new_shape[start] > 1:
+            start -= 1
+        if start < end:
             tensor_in = tensor_out
-            block_2 = block_1 * new_shape[i]
-            group_x = np.prod(org_shape[:i]) if i > 0 else 1
-            workgroup = (group_x, new_shape[i], 1)
+            group_x = np.prod(org_shape[:start+1]) if start >= 0 else 1
+            group_y = np.prod(new_shape[start+1:end+1])
+            block_2 = block_1 * group_y
+            workgroup = (group_x, group_y, 1)
             np_array = np.zeros(group_x * block_2, dtype=np.float32)
             tensor_out = manager.tensor(np_array)
             out_algorithms.append(manager.algorithm([tensor_in, tensor_out],
@@ -77,6 +82,8 @@ def broadcast_to(tensor_in, org_shape, new_shape, out_algorithms, out_next_tenso
                                                     []))
             out_next_tensors.append(tensor_out)
             block_1 = block_2
+            end = start
         else:
-            block_1 *= new_shape[i]
+            block_1 *= new_shape[end]
+            end -= 1
     return tensor_out
