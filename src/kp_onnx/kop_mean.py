@@ -185,7 +185,7 @@ void main() {
 
         sum_tensor, out_shape = cur
 
-        n = float(1.0 / len(input_tensors))
+        scale = float(1.0 / len(input_tensors))
         output_size = int(np.prod(out_shape)) if len(out_shape) > 0 else 1
         tensor_out = self.manager.tensor(np.zeros(output_size, dtype=np.float32))
         updated_tensors.append(tensor_out)
@@ -194,7 +194,7 @@ void main() {
             [sum_tensor, tensor_out],
             self.scale_shader,
             (output_size, 1, 1),
-            [n],
+            [scale],
             []
         )
         updated_algorithms.append(algo_scale)

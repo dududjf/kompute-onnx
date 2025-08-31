@@ -49,12 +49,12 @@ void main() {
     __str__ = __repr__
 
     def run(self, *inputs):
-        x = inputs[0]
-        shape = list(x.shape)
-        assert len(shape) >= 2, "GlobalAveragePool expects at least [N, C, ...]"
-        # 无空间维：直接返回[N, C]
-        if len(shape) == 2:
-            return [x.astype(np.float32, copy=True)]
+        # x = inputs[0]
+        # shape = list(x.shape)
+        # assert len(shape) >= 2, "GlobalAveragePool expects at least [N, C, ...]"
+        # # 无空间维：直接返回[N, C]
+        # if len(shape) == 2:
+        #     return [x.astype(np.float32, copy=True)]
 
         input_tensors = []
         for inp in inputs:
