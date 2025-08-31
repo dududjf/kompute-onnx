@@ -1,4 +1,3 @@
-# kp_onnx/kop_tile.py
 import numpy as np
 import kp
 from .shader_utils import compile_source
@@ -7,49 +6,32 @@ from .shader_utils import compile_source
 class TileOp:
     def __init__(self, manager: kp.Manager):
         self.manager = manager
-        self.shader = compile_source('''
+        self.compiled_shader = compile_source("""
 #version 450
-layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout (local_size_x = 1, local_size_y = 1) in;
 
-layout (binding = 0) buffer buf_in  { float in_data[];  };
-layout (binding = 1) buffer buf_out { float out_data[]; };
+layout (binding = 0) buffer buf_in_tensor { float in_tensor[]; };
+layout (binding = 1) buffer buf_out_tensor { float out_tensor[]; };
 
-layout (constant_id = 0) const float size_x_in_f  = 0;
-layout (constant_id = 1) const float size_y_in_f  = 0;
-layout (constant_id = 2) const float size_z_in_f  = 0;
-layout (constant_id = 3) const float size_x_out_f = 0;
-layout (constant_id = 4) const float size_y_out_f = 0;
-layout (constant_id = 5) const float size_z_out_f = 0;
+layout (constant_id = 0) const float in_block_size_f = 0;
+layout (constant_id = 1) const float out_block_size_f = 0;
 
 void main()
 {
     uint gx = gl_GlobalInvocationID.x;
     uint gy = gl_GlobalInvocationID.y;
-    uint gz = gl_GlobalInvocationID.z;
 
-    uint size_x_in  = uint(size_x_in_f);
-    uint size_y_in  = uint(size_y_in_f);
-    uint size_z_in  = uint(size_z_in_f);
-    uint size_x_out = uint(size_x_out_f);
-    uint size_y_out = uint(size_y_out_f);
-    uint size_z_out = uint(size_z_out_f);
+    uint in_block_size = uint(in_block_size_f);
+    uint out_block_size = uint(out_block_size_f);
 
-    uint stride_y_in  = size_z_in;
-    uint stride_x_in  = size_y_in * stride_y_in;
-    uint stride_y_out = size_z_out;
-    uint stride_x_out = size_y_out * stride_y_out;
+    uint in_offset = gx * in_block_size;
+    uint out_offset = gx * out_block_size + gy * in_block_size;
 
-    // 输出 -> 输入：按输入维度取模
-    uint ix = (size_x_in  == 0u) ? 0u : (gx % size_x_in);
-    uint iy = (size_y_in  == 0u) ? 0u : (gy % size_y_in);
-    uint iz = (size_z_in  == 0u) ? 0u : (gz % size_z_in);
-
-    uint p_in  = ix * stride_x_in  + iy * stride_y_in  + iz;
-    uint p_out = gx * stride_x_out + gy * stride_y_out + gz;
-
-    out_data[p_out] = in_data[p_in];
+    for (uint i = 0; i < in_block_size; i++) {
+        out_tensor[out_offset + i] = in_tensor[in_offset + i];
+    }
 }
-''')
+""")
 
     def __repr__(self):
         return f"TileOp({self.manager.get_device_properties()['device_name']})"
@@ -57,77 +39,71 @@ void main()
     def __str__(self):
         return self.__repr__()
 
-    @staticmethod
-    def _sizes3(shape):
-        if len(shape) == 0:
-            return 1, 1, 1
-        if len(shape) == 1:
-            return shape[0], 1, 1
-        if len(shape) == 2:
-            return shape[0], shape[1], 1
-        x = np.prod(shape[:-2])
-        y = shape[-2]
-        z = shape[-1]
-        return x, y, z
-
     def run(self, *inputs):
-        assert len(inputs) >= 2, "TileOp needs (x, repeats)"
-        x = inputs[0]
-        repeats = inputs[1].astype(np.float32)
-        assert repeats.ndim == 1, "repeats must be 1-D"
-        assert repeats.size == x.ndim, "len(repeats) must equal x.ndim"
+        assert len(inputs) == 2, "TileOp needs input tensor and repeats"
 
-        in_dims = list(x.shape)
-        out_dims = [int(in_dims[d]) * int(repeats[d]) for d in range(x.ndim)]
+        input_tensors = []
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32) \
+                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
 
-        sx_in,  sy_in,  sz_in = self._sizes3(in_dims)
-        sx_out, sy_out, sz_out = self._sizes3(out_dims)
+        updated_algorithms, updated_tensors = [], []
+        output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
+        tensor_out, output_shape = output_tensor_and_shape[0]
 
-        tensor_in = self.manager.tensor(x.reshape(-1))
-        size = np.prod(out_dims)
-        tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
-
-        workgroup = (sx_out, sy_out, sz_out)
-
-        algo = self.manager.algorithm([tensor_in, tensor_out],
-                                      self.shader, workgroup,
-                                      [sx_in, sy_in, sz_in, sx_out, sy_out, sz_out],
-                                      [])
+        # 执行GPU操作序列
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
-           .record(kp.OpAlgoDispatch(algo)) \
-           .record(kp.OpTensorSyncLocal([tensor_out])) \
-           .eval()
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+        for alg in updated_algorithms:
+            seq.record(kp.OpAlgoDispatch(alg))
+        seq.record(kp.OpTensorSyncLocal([tensor_out]))
+        seq.eval()
 
-        outputs = [tensor_out.data().reshape(out_dims)]
-
-        del tensor_in, tensor_out
-        return outputs
+        output = tensor_out.data().reshape(output_shape)
+        for tensor, _ in input_tensors:
+            del tensor
+        del updated_tensors
+        return [output]
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        assert len(input_tensors) >= 2, "TileOp.fuse needs (x_tensor, repeats_tensor)"
-        x_tensor = input_tensors[0][0]
-        x_dims = input_tensors[0][1]
-        reps_tensor = input_tensors[1][0]
+        assert len(input_tensors) >= 2, "TileOp needs input tensor and repeats"
 
-        assert reps_tensor.size == len(x_dims), "len(repeats) must equal rank"
+        data_tensor = input_tensors[0][0]
+        data_shape = input_tensors[0][1]
+        repeats = input_tensors[1][0].data().astype(int)
 
-        output_shape = [int(x_dims[d]) * int(reps_tensor[d]) for d in range(len(x_dims))]
+        assert len(data_shape) == len(repeats), "TileOp: input tensor and repeats must have the same rank"
 
-        sx_in,  sy_in,  sz_in = self._sizes3(x_dims)
-        sx_out, sy_out, sz_out = self._sizes3(output_shape)
+        tensor_out = data_tensor
+        current_shape = list(data_shape)
+        block_size = 1
+        end = len(data_shape) - 1
 
-        out_size = np.prod(output_shape) if output_shape else 1
-        tensor_out = self.manager.tensor(np.zeros(out_size, dtype=np.float32))
-        updated_tensors.append(tensor_out)
+        while end >= 0:
+            repeat = repeats[end]
+            if repeat > 1:
+                dim_size = current_shape[end]
+                in_block_size = block_size * dim_size
+                out_block_size = in_block_size * repeat
+                group_count = np.prod(current_shape[:end]) if end > 0 else 1
+                out_array = np.zeros(group_count * out_block_size, dtype=np.float32)
+                tensor_out = self.manager.tensor(out_array)
+                workgroup = (group_count, repeat, 1)
+                updated_algorithms.append(self.manager.algorithm([data_tensor, tensor_out],
+                                                                 self.compiled_shader,
+                                                                 workgroup,
+                                                                 [in_block_size, out_block_size],
+                                                                 []))
+                updated_tensors.append(tensor_out)
+                data_tensor = tensor_out
+                block_size = out_block_size
+                current_shape[end] = dim_size * repeat
 
-        workgroup = (sx_out, sy_out, sz_out)
+            else:
+                block_size *= current_shape[end]
+            end -= 1
 
-        updated_algorithms.append(self.manager.algorithm([x_tensor, tensor_out],
-                                                         self.shader,
-                                                         workgroup,
-                                                         [sx_in, sy_in, sz_in, sx_out, sy_out, sz_out],
-                                                         []))
-
-        return [(tensor_out, output_shape)]
+        return [(tensor_out, current_shape)]

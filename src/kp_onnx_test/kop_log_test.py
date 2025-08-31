@@ -17,7 +17,7 @@ print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
 kop_out = log_op.run(x)[0]
-print("Kompute:", time.time() - start_time, "seconds")
+print(f"{log_op}: ", time.time() - start_time, "seconds")
 
 # print(numpy_out)
 # print(kop_out)

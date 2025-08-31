@@ -21,6 +21,5 @@ start_time = time.time()
 kp_out = asin_op.run(x)[0]
 print(f"{asin_op}: ", time.time() - start_time, "seconds")
 
-print("shape equal: ", kp_out.shape == np_out.shape)
 print("Max error: ", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))

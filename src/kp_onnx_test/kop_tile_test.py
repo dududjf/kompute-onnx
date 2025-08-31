@@ -10,9 +10,8 @@ print(mgr.get_device_properties())
 
 tile_op = TileOp(mgr)
 
-x = np.random.random((1024, 1024)).astype(np.float32)
-x = np.array([[1, 2], [3, 4]], dtype=np.float32)
-repeats = np.array([1, 2], dtype=np.int64)
+x = np.random.random((3, 2, 64, 512)).astype(np.float32)
+repeats = np.array([2, 2, 3, 4], dtype=np.int64)
 
 start_time = time.time()
 np_out = np.tile(x, repeats)
@@ -21,29 +20,8 @@ print("Numpy:", time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = tile_op.run(x, repeats)[0]
 print(f"{tile_op}: ", time.time() - start_time, "seconds")
-
-print(np_out)
 print("----")
-print(kp_out)
-print("shape equal: ", kp_out.shape == np_out.shape)
+
 print("Max error: ", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
-
-x = np.array([[[1, 2], [3, 4]], [[5, 6], [7, 8]]], dtype=np.float32)
-repeats = np.array([1, 2, 3], dtype=np.int64)
-
-start_time = time.time()
-np_out = np.tile(x, repeats)
-print("Numpy:", time.time() - start_time, "seconds")
-
-start_time = time.time()
-kp_out = tile_op.run(x, repeats)[0]
-print(f"{tile_op}: ", time.time() - start_time, "seconds")
-
-print(np_out)
-print("----")
-print(kp_out)
-print("shape equal: ", kp_out.shape == np_out.shape)
-print("Max error: ", np.abs(np_out - kp_out).max())
-print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))

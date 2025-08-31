@@ -10,7 +10,7 @@ print(mgr.get_device_properties())
 shrink_op = ShrinkOp(mgr)
 
 
-def numpy_shrink(data, lam=0.5, bis=0.0):
+def numpy_shrink(data, bis=0.0, lam=0.5):
     return np.where(
         data < -lam,
         data + bis,
@@ -21,7 +21,7 @@ def numpy_shrink(data, lam=0.5, bis=0.0):
 x = np.random.random((1024, 1024)).astype(np.float32)
 
 
-# -------- Case 1: lambda: None, bias: None --------
+# -------- Case 1: bias: None, lambda: None --------
 print("Case 1: Shrink with lambda: None, bias: None")
 
 start_time = time.time()
@@ -36,35 +36,35 @@ print("Max error: ", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
-# -------- Case 2: lambda: 1.2, bias: None --------
-print("Case 2: Shrink with lambda: 1.2, bias: None")
+# -------- Case 2: bias: 0.3, lambda: None --------
+print("Case 2: Shrink with bias: 0.3, lambda: None")
 
-lambd = float(1.2)
+bias = float(0.3)
 
 start_time = time.time()
-np_out = numpy_shrink(x, lambd)
+np_out = numpy_shrink(x, bias)
 print("Numpy: ", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = shrink_op.run(x, lambd)[0]
+kp_out = shrink_op.run(x, bias)[0]
 print(f"{shrink_op}: ", time.time() - start_time, "seconds")
 
 print("Max error: ", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
-# -------- Case 3: lambda: 1.2, bias: 0.3 --------
-print("Case 2: Shrink with lambda: 1.2, bias: 0.3")
+# -------- Case 3: bias: 0.3, lambda: 1.2 --------
+print("Case 2: Shrink with bias: 0.3, lambda: 1.2")
 
-lambd = float(1.2)
 bias = float(0.3)
+lambd = float(1.2)
 
 start_time = time.time()
-np_out = numpy_shrink(x, lambd, bias)
+np_out = numpy_shrink(x, bias, lambd)
 print("Numpy: ", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = shrink_op.run(x, lambd, bias)[0]
+kp_out = shrink_op.run(x, bias, lambd)[0]
 print(f"{shrink_op}: ", time.time() - start_time, "seconds")
 
 print("Max error: ", np.abs(np_out - kp_out).max())

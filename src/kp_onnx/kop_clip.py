@@ -49,44 +49,30 @@ void main() {
         return self.__repr__()
 
     def run(self, *inputs):
-        data = inputs[0].astype(np.float32)
+        input_tensors = []
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32) \
+                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
 
-        min_val = float(inputs[1]) if len(inputs) > 1 else None
-        max_val = float(inputs[2]) if len(inputs) > 2 else None
+        updated_algorithms, updated_tensors = [], []
+        output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
+        tensor_out, output_shape = output_tensor_and_shape[0]
 
-        # case 1: min and max are None
-        if min_val is None and max_val is None:
-            outputs = [data]
-            return outputs
-
-        flat_data = data.reshape(-1)
-        tensor_in = self.manager.tensor(flat_data)
-        tensor_out = self.manager.tensor(np.empty_like(flat_data))
-        tensors = [tensor_in, tensor_out]
         seq = self.manager.sequence()
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+        for alg in updated_algorithms:
+            seq.record(kp.OpAlgoDispatch(alg))
+        seq.record(kp.OpTensorSyncLocal([tensor_out]))
+        seq.eval()
 
-        # case 2：only min
-        if min_val is not None and max_val is None:
-            algo = self.manager.algorithm(tensors, self.shader_min, spec_consts=[min_val])
-            seq.record(kp.OpTensorSyncDevice([tensor_in])) \
-               .record(kp.OpAlgoDispatch(algo)) \
-               .record(kp.OpTensorSyncLocal([tensor_out])) \
-               .eval()
+        output = tensor_out.data().reshape(output_shape)
 
-            outputs = [tensor_out.data().reshape(data.shape)]
-            del tensor_in, tensor_out
-            return outputs
-
-        # case 3: min and max
-        algo = self.manager.algorithm(tensors, self.shader_minmax, spec_consts=[min_val, max_val])
-        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
-           .record(kp.OpAlgoDispatch(algo)) \
-           .record(kp.OpTensorSyncLocal([tensor_out])) \
-           .eval()
-
-        outputs = [tensor_out.data().reshape(data.shape)]
-        del tensor_in, tensor_out
-        return outputs
+        for tensor, _ in input_tensors:
+            del tensor
+        del updated_tensors
+        return [output]
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:

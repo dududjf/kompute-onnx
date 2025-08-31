@@ -29,8 +29,8 @@ print(mgr.get_device_properties())
 prelu_op = PReLUOp(mgr)
 
 print('Case 1')
-numpy_in_1 = np.random.random((3, 1023, 1023, 1)).astype(np.float32)
-numpy_in_2 = np.random.random((1023, 15)).astype(np.float32)
+numpy_in_1 = np.random.random((3, 512, 1023, 15)).astype(np.float32)
+numpy_in_2 = np.random.random((1023, 1)).astype(np.float32)
 
 start_time = time.time()
 np_out = np_prelu(numpy_in_1, numpy_in_2)
@@ -42,8 +42,8 @@ print(f"{prelu_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 print('Case 2')
-numpy_in_1 = np.random.random((3, 3, 255, 255, 1)).astype(np.float32)
-numpy_in_2 = np.random.random((255, 255, 15)).astype(np.float32)
+numpy_in_1 = np.random.random((3, 3, 255, 255, 15)).astype(np.float32)
+numpy_in_2 = np.random.random((255, 255, 1)).astype(np.float32)
 
 start_time = time.time()
 np_out = np_prelu(numpy_in_1, numpy_in_2)

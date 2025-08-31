@@ -34,24 +34,30 @@ void main() {
         return self.__repr__()
 
     def run(self, *inputs):
-        data = inputs[0].astype(np.float32)
-        flat_data = data.reshape(-1)
-        alpha = float(inputs[1]) if len(inputs) >= 2 and inputs[1] is not None else DEFAULT_ALPHA
+        input_tensors = []
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32) \
+                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
 
-        tensor_in = self.manager.tensor(flat_data)                            # binding 0
-        tensor_out = self.manager.tensor(np.empty_like(flat_data))            # binding 1
-        tensors = [tensor_in, tensor_out]
+        updated_algorithms, updated_tensors = [], []
+        output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
+        tensor_out, output_shape = output_tensor_and_shape[0]
 
-        algo = self.manager.algorithm(tensors, self.shader, spec_consts=[alpha])
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
-            .record(kp.OpAlgoDispatch(algo)) \
-            .record(kp.OpTensorSyncLocal([tensor_out])) \
-            .eval()
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+        for alg in updated_algorithms:
+            seq.record(kp.OpAlgoDispatch(alg))
+        seq.record(kp.OpTensorSyncLocal([tensor_out]))
+        seq.eval()
 
-        outputs = [tensor_out.data().reshape(data.shape)]
-        del tensor_in, tensor_out
-        return outputs
+        output = tensor_out.data().reshape(output_shape)
+
+        for tensor, _ in input_tensors:
+            del tensor
+        del updated_tensors
+        return [output]
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
