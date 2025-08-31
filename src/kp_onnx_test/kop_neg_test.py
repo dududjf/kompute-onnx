@@ -16,7 +16,7 @@ numpy_out = -numpy_in
 print("NEG Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = neg_op.run([numpy_in])
+kp_out = neg_op.run(numpy_in)[0]
 print(f"{neg_op}:", time.time() - start_time, "seconds")
 
 print('NEG Max error:', np.abs(numpy_out - kp_out).max())

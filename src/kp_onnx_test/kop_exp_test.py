@@ -16,7 +16,7 @@ numpy_out = np.exp(numpy_in)
 print("EXP Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = exp_op.run([numpy_in])
+kp_out = exp_op.run(numpy_in)[0]
 print(f"{exp_op}:", time.time() - start_time, "seconds")
 
 print("EXP Max error:", np.abs(numpy_out - kp_out).max())

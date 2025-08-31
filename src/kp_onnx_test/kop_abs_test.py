@@ -16,7 +16,7 @@ numpy_out = np.abs(numpy_in)
 print("ABS Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = abs_op.run([numpy_in])
+kp_out = abs_op.run(numpy_in)[0]
 print(f"{abs_op}:", time.time() - start_time, "seconds")
 
 print("ABS Max error:", np.abs(numpy_out - kp_out).max())

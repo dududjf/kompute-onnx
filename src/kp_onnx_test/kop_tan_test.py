@@ -16,7 +16,7 @@ numpy_out = np.tan(numpy_in)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = tan_op.run([numpy_in])
+kp_out = tan_op.run(numpy_in)[0]
 print(f"{tan_op}:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())

@@ -39,46 +39,42 @@ void main() {
 
     __str__ = __repr__
 
-    def run(self, inputs):
-        # 允许 run([x])、run([x, alpha])、run([x, alpha, gamma])
-        x = inputs[0]
-        #  指定alpha、gamma值，或使用 SELU 默认常量
-        alpha = float(inputs[1]) if len(inputs) > 1 else DEFAULT_ALPHA
-        gamma = float(inputs[2]) if len(inputs) > 2 else DEFAULT_GAMMA
-        x_flat = x.reshape(-1).astype(np.float32)
+    def run(self, *inputs):
+        input_tensors = []
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32) \
+                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
 
-        tensor_in = self.manager.tensor(x_flat)
-        tensor_out = self.manager.tensor(np.zeros_like(x_flat))
-
-        workgroup = (x_flat.size, 1, 1)
-        algo = self.manager.algorithm(
-            [tensor_in, tensor_out],
-            self.shader,
-            workgroup,
-            [alpha, gamma],
-            []
-        )
+        updated_algorithms, updated_tensors = [], []
+        output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
+        tensor_out, output_shape = output_tensor_and_shape[0]
 
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
-           .record(kp.OpAlgoDispatch(algo)) \
-           .record(kp.OpTensorSyncLocal([tensor_out])) \
-           .eval()
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+        for alg in updated_algorithms:
+            seq.record(kp.OpAlgoDispatch(alg))
+        seq.record(kp.OpTensorSyncLocal([tensor_out]))
+        seq.eval()
 
-        output_tensor = tensor_out.data().reshape(x.shape)
-        del tensor_in, tensor_out
-        return [output_tensor]
+        output = tensor_out.data().reshape(output_shape)
+
+        for tensor, _ in input_tensors:
+            del tensor
+        del updated_tensors
+        return [output]
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        tensor_in, shape = input_tensors[0]
+        tensor_in, tensor_shape = input_tensors[0]
         alpha = float(input_tensors[1][0].data()) if len(input_tensors) > 1 else DEFAULT_ALPHA
         gamma  = float(input_tensors[2][0].data()) if len(input_tensors) > 2 else DEFAULT_GAMMA
-        total = np.prod(shape)
-        tensor_out = self.manager.tensor(np.zeros(total, dtype=np.float32))
+        size = np.prod(tensor_shape)
+        tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
         updated_tensors.append(tensor_out)
 
-        workgroup = (total, 1, 1)
+        workgroup = (size, 1, 1)
         updated_algorithms.append(self.manager.algorithm(
             [tensor_in, tensor_out],
             self.shader,
@@ -86,4 +82,4 @@ void main() {
             [alpha, gamma],
             []
         ))
-        return [(tensor_out, shape)]
+        return [(tensor_out, tensor_shape)]

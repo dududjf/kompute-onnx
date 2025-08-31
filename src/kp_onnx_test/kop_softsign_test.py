@@ -16,7 +16,7 @@ numpy_out = numpy_in / (1.0 + np.abs(numpy_in))
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = softsign_op.run([numpy_in])
+kp_out = softsign_op.run(numpy_in)[0]
 print(f"{softsign_op}:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())

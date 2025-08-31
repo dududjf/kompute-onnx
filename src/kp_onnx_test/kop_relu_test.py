@@ -16,7 +16,7 @@ numpy_out = np.maximum(numpy_in, 0.0)
 print("RELU Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = relu_op.run([numpy_in])
+kp_out = relu_op.run(numpy_in)[0]
 print(f"{relu_op}:", time.time() - start_time, "seconds")
 
 print("RELU Max error:", np.abs(numpy_out - kp_out).max())

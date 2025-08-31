@@ -18,7 +18,7 @@ numpy_out = np.where(numpy_in1 >= 0.0, numpy_in1, DEFAULT_ALPHA * (np.exp(numpy_
 print("NumPy (Default):", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = celu_op.run([numpy_in1])
+kp_out = celu_op.run(numpy_in1)[0]
 print(f"{celu_op} (Default):", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
@@ -34,7 +34,7 @@ numpy_out = np.where(numpy_in2 >= 0.0, numpy_in2, alpha * (np.exp(numpy_in2 / al
 print("NumPy (alpha=0.5):", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = celu_op.run([numpy_in2, alpha])
+kp_out = celu_op.run(numpy_in2, alpha)[0]
 print(f"{celu_op} (alpha=0.5):", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
