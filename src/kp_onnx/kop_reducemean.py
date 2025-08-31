@@ -92,47 +92,36 @@ void main()
         shape_data = input_tensors[0][1]
         axes = input_tensors[1][0].data().astype(int) if len(input_tensors) > 1 else None
         keepdims = float(input_tensors[2][0].data()) if len(input_tensors) > 2 else DEFAULT_KEEPDIMS
-        noop_with_empty_axes = float(input_tensors[3][0].data()) if len(input_tensors) > 3 else DEFAULT_NOOP_WITH_EMPTY_AXES
+        noop_with_empty_axes = float(input_tensors[3][0].data()) \
+            if len(input_tensors) > 3 else DEFAULT_NOOP_WITH_EMPTY_AXES
 
         if noop_with_empty_axes and axes is None:
             return [(tensor_data, shape_data)]
 
-        # 规范化轴索引
         normalized_axes = self._normalize_axes(axes, len(shape_data))
 
-        # 初始化变量，借鉴broadcast_to的分维度处理思想
         tensor_out = tensor_data
-        current_shape = shape_data.copy()
+        current_shape = list(shape_data)
         axes_set = set(normalized_axes)
-        block_size = 1  # 基础块大小（非归约维度的乘积）
-        end = len(current_shape) - 1  # 从最后一个维度开始处理
+        block_size = 1
+        end = len(current_shape) - 1
 
-        # 从后往前遍历维度，类似broadcast_to的反向操作
         while end >= 0:
             start = end
-            # 检查当前维度是否需要归约
             if end in axes_set:
-                # 向前寻找连续的归约维度（合并处理提高效率）
                 while start >= 0 and start in axes_set:
                     start -= 1
 
-                # 计算归约所需的参数
-                # 非归约部分的块组数（前start+1维的乘积）
                 group_x = np.prod(current_shape[:start + 1]) if start >= 0 else 1
-                # 归约维度的总大小
                 reduce_size = np.prod(current_shape[start + 1:end + 1])
-                # 输入块大小：归约维度大小 × 基础块大小
                 in_block = reduce_size * block_size
-                # 输出块大小：基础块大小（归约后维度被移除或保留为1）
                 out_block = block_size
 
-                # 创建中间张量（用于累加求和）和输出张量
                 sum_array = np.zeros(group_x * out_block, dtype=np.float32)
                 sum_tensor = self.manager.tensor(sum_array)
                 out_array = np.zeros(group_x * out_block, dtype=np.float32)
                 tensor_out = self.manager.tensor(out_array)
 
-                # 配置GPU算法
                 workgroup = (group_x, reduce_size, 1)
                 updated_algorithms.append(self.manager.algorithm(
                     [tensor_data, tensor_out, sum_tensor],
@@ -142,25 +131,17 @@ void main()
                     []
                 ))
 
-                # 更新参数，准备处理下一个维度
                 updated_tensors.extend([sum_tensor, tensor_out])
-                tensor_in = tensor_out
-
-                # 更新基础块大小
                 block_size = out_block
 
-                # 根据keepdim决定是否保留归约后的维度
                 if keepdims:
-                    # 保留维度，在形状中插入1
                     reduced_dims = [1] * (end - start)
                     current_shape = current_shape[:start + 1] + reduced_dims + current_shape[end + 1:]
                 else:
-                    # 移除归约维度
                     current_shape = current_shape[:start + 1] + current_shape[end + 1:]
 
-                end = start  # 继续处理前面的维度
+                end = start
             else:
-                # 非归约维度，累加到基础块大小
                 block_size *= current_shape[end]
                 end -= 1
 
