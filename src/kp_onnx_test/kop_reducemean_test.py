@@ -98,11 +98,10 @@ print("----")
 # -------- Case 5: axes: [1,2], keepdims: 1, noop_with_empty_axes: 0 --------
 print("Case 5: axes: [1,2], keepdims: 1, noop_with_empty_axes: 0")
 x = np.random.random((3, 1024, 1024)).astype(np.float32)
-axes = np.array([1, 2], dtype=np.float32)
+axes = np.array([1, 2], dtype=np.int64r)
 start_time = time.time()
 np_out = np_mean(x, axes)
 print("Numpy:", time.time() - start_time, "seconds")
-
 start_time = time.time()
 kp_out = reduce_mean_op.run(x, axes)[0]
 print(f"{reduce_mean_op}: ", time.time() - start_time, "seconds")
@@ -114,7 +113,7 @@ print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 # -------- Case 6: axes: [1,2], keepdims: 0, noop_with_empty_axes: 0 --------
 print("Case 6: axes: [1,2], keepdims: 0, noop_with_empty_axes: 0")
 x = np.random.random((3, 1024, 1024))
-axes = np.array([1, 2], dtype=np.float32)
+axes = np.array([1, 2], dtype=np.int64)
 start_time = time.time()
 np_out = np_mean(x, axes, keepdims=0)
 print("Numpy:", time.time() - start_time, "seconds")
