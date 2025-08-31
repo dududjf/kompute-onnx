@@ -41,34 +41,36 @@ void main() {
         device_name = self.manager.get_device_properties()['device_name']
         return f"BitwiseNotOp({device_name})"
 
-    def run(self, input_array: np.ndarray):
-        tensor_shape = input_array.shape
-        flat = input_array.reshape(-1)
+    def run(self, *inputs):
+        input_tensors = []
+        for inp in inputs:
+            if inp.dtype == np.float32:
+                numpy_in = inp.reshape(-1).astype(np.float32)
+                tensor = self.manager.tensor(numpy_in)
+            elif inp.dtype == np.int32:
+                numpy_in = inp.reshape(-1).astype(np.int32)
+                tensor = self.manager.tensor_t(numpy_in, tensor_type=kp.TensorTypes.device)
+            else:
+                raise TypeError(f"Unsupported dtype {inp.dtype}. Only float32 and int32 supported.")
+            input_tensors.append((tensor, list(inp.shape)))
 
-        if flat.dtype == np.float32:
-            tensor_in = self.manager.tensor(flat.astype(np.float32))
-            tensor_out = self.manager.tensor(np.empty_like(flat, dtype=np.float32))
-            tensors = [tensor_in, tensor_out]
-            algo = self.manager.algorithm(tensors, self.shader_float)
-
-        elif flat.dtype == np.int32:
-            tensor_in = self.manager.tensor_t(flat.astype(np.int32), tensor_type=kp.TensorTypes.device)
-            tensor_out = self.manager.tensor_t(np.empty_like(flat, dtype=np.int32), tensor_type=kp.TensorTypes.device)
-            tensors = [tensor_in, tensor_out]
-            algo = self.manager.algorithm(tensors, _bitwise_not_code_int)
-
-        else:
-            raise TypeError(f"Unsupported dtype {flat.dtype}. Only float32 and int32 supported.")
+        updated_algorithms, updated_tensors = [], []
+        output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
+        tensor_out, output_shape = output_tensor_and_shape[0]
 
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
-           .record(kp.OpAlgoDispatch(algo)) \
-           .record(kp.OpTensorSyncLocal([tensor_out])) \
-           .eval()
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+        for alg in updated_algorithms:
+            seq.record(kp.OpAlgoDispatch(alg))
+        seq.record(kp.OpTensorSyncLocal([tensor_out]))
+        seq.eval()
 
-        result = tensor_out.data().reshape(tensor_shape)
-        del tensor_in, tensor_out
-        return [result]
+        output = tensor_out.data().reshape(output_shape)
+
+        for tensor, _ in input_tensors:
+            del tensor
+        del updated_tensors
+        return [output]
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]],updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
