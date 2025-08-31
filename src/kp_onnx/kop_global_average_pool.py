@@ -5,48 +5,40 @@ from .shader_utils import compile_source
 
 class GlobalAveragePoolOp:
     """
-    onnx::GlobalAveragePool 的 Kompute 实现（N,C,spatial... → N,C,1,...,1 | float32）
+    onnx::GlobalAveragePool 的 Kompute 实现（输入形状：N, C, spatial... → 输出形状：N, C, 1, ..., 1 | float32）
     """
 
     def __init__(self, manager: kp.Manager):
         self.manager = manager
         self.shader = compile_source(r"""
 #version 450
-layout (local_size_x = 1) in;
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout (set = 0, binding = 0) readonly buffer InBuf  { float in_buf[]; };
 layout (set = 0, binding = 1) writeonly buffer OutBuf { float out_buf[]; };
 
-layout (constant_id = 0) const float Nf = 0;
-layout (constant_id = 1) const float Cf = 0;
-layout (constant_id = 2) const float Sf = 0;             // S = ∏(空间维)
-layout (constant_id = 3) const float STRIDE_N_f = 0;     // = C * S
-layout (constant_id = 4) const float STRIDE_C_f = 0;     // = S
+layout (constant_id = 0) const float S_f = 0.0;
+layout (constant_id = 1) const float C_f = 0.0;
 
 void main() {
-    uint N = uint(Nf);
-    uint C = uint(Cf);
-    uint S = uint(Sf);
-    uint STRIDE_N = uint(STRIDE_N_f);
-    uint STRIDE_C = uint(STRIDE_C_f);
+    uint n = gl_GlobalInvocationID.x;
+    uint c = gl_GlobalInvocationID.y;
 
-    uint gid = gl_GlobalInvocationID.x;
-    if (gid >= N * C) return;
+    uint S = uint(S_f);
+    uint C = uint(C_f);
+    uint STRIDE_C = S;
+    uint STRIDE_N = C * S;
 
-    // 映射到 (n,c)
-    uint n = gid / C;
-    uint c = gid % C;
+    if (c >= C) { return; }
 
-    // 该 (n,c) 在扁平内存中的起始位置
     uint base = n * STRIDE_N + c * STRIDE_C;
 
-    // 空间维在线性内存上连续，直接累加 S 个元素
     float acc = 0.0;
-    for (uint t = 0u; t < S; ++t) {
-        acc += in_buf[base + t];
+    for (uint i = 0u; i < S; ++i) {
+        acc += in_buf[base + i];
     }
-
-    out_buf[gid] = (S == 0u) ? 0.0 : acc / float(S);
+    float mean = (S > 0u) ? (acc / float(S)) : 0.0;
+    out_buf[n * C + c] = mean;
 }
 """)
 
@@ -56,83 +48,64 @@ void main() {
 
     __str__ = __repr__
 
-    def run(self, inputs):
+    def run(self, *inputs):
         x = inputs[0]
-        # x = x.astype(np.float32)
         shape = list(x.shape)
         assert len(shape) >= 2, "GlobalAveragePool expects at least [N, C, ...]"
+        # 无空间维：直接返回[N, C]
+        if len(shape) == 2:
+            return [x.astype(np.float32, copy=True)]
 
-        N = int(shape[0])
-        C = int(shape[1])
-        S = int(np.prod(shape[2:])) if len(shape) > 2 else 1
-        strideN = np.prod(shape[1:])  # C * S
-        strideC = S
+        input_tensors = []
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape)))
 
-        # 输出形状：空间维全部变为 1
-        out_shape = [N, C] + [1] * max(0, len(shape) - 2)
-        total_out = int(np.prod(out_shape)) if len(out_shape) > 0 else 1  # = N*C
-
-        # 空输出早退
-        if total_out == 0:
-            return [np.zeros(out_shape, dtype=np.float32)]
-
-        # IO tensors
-        x_flat = x.reshape(-1).astype(np.float32)
-        tensor_in = self.manager.tensor(x_flat)
-        tensor_out = self.manager.tensor(np.zeros(total_out, dtype=np.float32))
-
-        # spec constants
-        spec_consts = [float(N), float(C), float(S), float(strideN), float(strideC)]
-
-        # 每个 (n,c) 一个线程
-        workgroup = (int(N * C), 1, 1)
-        algo = self.manager.algorithm(
-            [tensor_in, tensor_out],
-            self.shader,
-            workgroup,
-            spec_consts,
-            []
-        )
+        updated_algorithms, updated_tensors = [], []
+        output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
+        tensor_out, output_shape = output_tensor_and_shape[0]
 
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tensor_in])) \
-           .record(kp.OpAlgoDispatch(algo)) \
-           .record(kp.OpTensorSyncLocal([tensor_out])) \
-           .eval()
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+        for alg in updated_algorithms:
+            seq.record(kp.OpAlgoDispatch(alg))
+        seq.record(kp.OpTensorSyncLocal([tensor_out]))
+        seq.eval()
 
-        out = tensor_out.data().reshape(out_shape)
-        del tensor_in, tensor_out
-        return [out]
+        output = tensor_out.data().reshape(output_shape)
 
-    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]],
-             updated_algorithms: list[kp.Algorithm],
+        for tensor, _ in input_tensors:
+            del tensor
+        del updated_tensors
+        return [output]
+
+    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        assert len(input_tensors) == 2, "GlobalAveragePool expects at least [N, C, ...]"
         tensor_in, in_shape = input_tensors[0]
+        assert len(in_shape) >= 2, "GlobalAveragePool expects at least [N, C, ...]"
+        if len(in_shape) == 2:
+            return [(tensor_in, list(in_shape))]
 
         N = int(in_shape[0])
         C = int(in_shape[1])
-        S = int(np.prod(in_shape[2:])) if len(in_shape) > 2 else 1
-        strideN = np.prod(in_shape[1:])  # C * S
-        strideC = S
+        spatial = in_shape[2:] if len(in_shape) > 2 else []
+        S = int(np.prod(spatial, dtype=np.int64)) if spatial else 1
 
-        out_shape = [N, C] + [1] * max(0, len(in_shape) - 2)
-        total_out = int(np.prod(out_shape)) if len(out_shape) > 0 else 1
+        out_elems = N * C
+        out_shape = [N, C] + [1] * len(spatial)
+        out_buf = np.zeros(out_elems, dtype=np.float32)
+        tensor_out = self.manager.tensor(out_buf)
 
-        tensor_out = self.manager.tensor(np.zeros(total_out, dtype=np.float32))
-        updated_tensors.append(tensor_out)
-
-        if total_out == 0:
-            return [(tensor_out, out_shape)]
-
-        spec_consts = [float(N), float(C), float(S), float(strideN), float(strideC)]
-
+        spec_consts = [float(S), float(C)]
         algo = self.manager.algorithm(
             [tensor_in, tensor_out],
             self.shader,
-            (int(N * C), 1, 1),
+            (N, C, 1),  # x=N, y=C, z=1
             spec_consts,
             []
         )
+
+        updated_tensors.append(tensor_out)
         updated_algorithms.append(algo)
         return [(tensor_out, out_shape)]

@@ -6,7 +6,7 @@ from .shader_utils import compile_source, broadcast_to
 class MeanOp:
     def __init__(self, manager: kp.Manager):
         self.manager = manager
-        self.compiled_shader = compile_source('''
+        self.add_shader = compile_source('''
 #version 450
 
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -68,49 +68,79 @@ void main() {
         return f"MeanOp({device_name})"
 
     def run(self, *inputs):
+        # 单输入：直接拷贝返回
         if len(inputs) == 1:
             return [inputs[0].astype(np.float32, copy=True)]
 
-        def _binary_add_run(x, y):
-            input_1 = x
-            input_2 = y
-            if input_1.ndim < input_2.ndim:
-                new_shape_1 = [1] * (input_2.ndim - input_1.ndim) + list(input_1.shape)
-                new_shape_2 = list(input_2.shape)
-            elif input_2.ndim < input_1.ndim:
-                new_shape_1 = list(input_1.shape)
-                new_shape_2 = [1] * (input_1.ndim - input_2.ndim) + list(input_2.shape)
-            else:
-                new_shape_1 = list(input_1.shape)
-                new_shape_2 = list(input_2.shape)
-            output_shape = []
-            for i in range(len(new_shape_1)):
-                if new_shape_1[i] == 1:
-                    output_shape.append(new_shape_2[i])
-                elif new_shape_2[i] == 1:
-                    output_shape.append(new_shape_1[i])
-                else:
-                    assert new_shape_1[i] == new_shape_2[i], f"MeanOp requires input {i} of the same shape"
-                    output_shape.append(new_shape_1[i])
+        input_tensors = []
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape)))
 
-            numpy_in_1 = input_1.reshape(-1).astype(np.float32, copy=False)
-            tensor_in_1 = self.manager.tensor(numpy_in_1)
-            new_in_1 = tensor_in_1
+        updated_algorithms, updated_tensors = [], []
+        output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
+        tensor_out, output_shape = output_tensor_and_shape[0]
+
+        seq = self.manager.sequence()
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+        for alg in updated_algorithms:
+            seq.record(kp.OpAlgoDispatch(alg))
+        seq.record(kp.OpTensorSyncLocal([tensor_out]))
+        seq.eval()
+
+        output = tensor_out.data().reshape(output_shape)
+
+        for tensor, _ in input_tensors:
+            del tensor
+        del updated_tensors
+        return [output]
+
+    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
+             updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
+        if len(input_tensors) == 1:
+            return [input_tensors[0]]
+
+        def _binary_add_plan(x, y):
+            input_1, shape_1 = x[0], list(x[1])
+            input_2, shape_2 = y[0], list(y[1])
+            if len(shape_1) < len(shape_2):
+                new_shape_1 = [1] * (len(shape_2) - len(shape_1)) + shape_1
+                new_shape_2 = shape_2
+            elif len(shape_2) < len(shape_1):
+                new_shape_1 = shape_1
+                new_shape_2 = [1] * (len(shape_1) - len(shape_2)) + shape_2
+            else:
+                new_shape_1 = shape_1
+                new_shape_2 = shape_2
+            output_shape = []
+            for j in range(len(new_shape_1)):
+                a, b = new_shape_1[j], new_shape_2[j]
+                if a == 1:
+                    output_shape.append(b)
+                elif b == 1:
+                    output_shape.append(a)
+                else:
+                    assert a == b, f"MeanOp requires input {j} of the same shape"
+                    output_shape.append(a)
+
+            new_in_1 = input_1
             algorithms_1, next_tensors_1 = [], []
             if output_shape[:-2] != new_shape_1[:-2] and not all(e == 1 for e in new_shape_1[:-2]):
                 final_shape_1 = output_shape[:-2] + list(new_shape_1[-2:])
-                new_in_1 = broadcast_to(tensor_in_1, new_shape_1, final_shape_1, algorithms_1, next_tensors_1, self.manager)
+                new_in_1 = broadcast_to(input_1, new_shape_1, final_shape_1, algorithms_1, next_tensors_1, self.manager)
                 new_shape_1 = final_shape_1
+                updated_algorithms.extend(algorithms_1)
+                updated_tensors.extend(next_tensors_1)
 
-            numpy_in_2 = input_2.reshape(-1).astype(np.float32, copy=False)
-            tensor_in_2 = self.manager.tensor(numpy_in_2)
-            new_in_2 = tensor_in_2
+            new_in_2 = input_2
             algorithms_2, next_tensors_2 = [], []
             if output_shape[:-2] != new_shape_2[:-2] and not all(e == 1 for e in new_shape_2[:-2]):
                 final_shape_2 = output_shape[:-2] + list(new_shape_2[-2:])
-                new_in_2 = broadcast_to(tensor_in_2, new_shape_2, final_shape_2,
-                                        algorithms_2, next_tensors_2, self.manager)
+                new_in_2 = broadcast_to(input_2, new_shape_2, final_shape_2, algorithms_2, next_tensors_2, self.manager)
                 new_shape_2 = final_shape_2
+                updated_algorithms.extend(algorithms_2)
+                updated_tensors.extend(next_tensors_2)
 
             if len(new_shape_1) == 1:
                 size_x_1 = new_shape_1[0]
@@ -134,154 +164,39 @@ void main() {
                 size_y_2 = new_shape_2[-2]
                 size_z_2 = new_shape_2[-1]
 
-            size = np.prod(output_shape)
-            tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
-            workgroup = (max(size_x_1, size_x_2), max(size_y_1, size_y_2), max(size_z_1, size_z_2))
-            # “a+b”的 compiled_shader
-            algo = self.manager.algorithm([new_in_1, new_in_2, tensor_out],
-                                          self.compiled_shader,
-                                          workgroup,
-                                          [size_x_1, size_y_1, size_z_1, size_x_2, size_y_2, size_z_2],
-                                          [])
-
-            seq = self.manager.sequence()
-            seq.record(kp.OpTensorSyncDevice([tensor_in_1, tensor_in_2]))
-            for alg_1 in algorithms_1:
-                seq.record(kp.OpAlgoDispatch(alg_1))
-            for alg_2 in algorithms_2:
-                seq.record(kp.OpAlgoDispatch(alg_2))
-            seq.record(kp.OpAlgoDispatch(algo))
-            seq.record(kp.OpTensorSyncLocal([tensor_out]))
-            seq.eval()
-            output = tensor_out.data()
-            outputs = [output.reshape(output_shape)]
-
-            del tensor_in_1, next_tensors_1, tensor_in_2, next_tensors_2, tensor_out
-            return outputs
-
-        # 逐个相加归约
-        cur = inputs[0]
-        for nxt in inputs[1:]:
-            cur = _binary_add_run(cur, nxt)[0]
-
-        # 末尾统一缩放（乘以 1/N）
-        n = float(1.0 / len(inputs))
-
-        flat = cur.reshape(-1).astype(np.float32, copy=False)
-        tin = self.manager.tensor(flat)
-        tout = self.manager.tensor(np.zeros_like(flat))
-        algo = self.manager.algorithm([tin, tout], self.scale_shader,
-                                      (flat.size, 1, 1), [n], [])
-        seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([tin]))
-        seq.record(kp.OpAlgoDispatch(algo))
-        seq.record(kp.OpTensorSyncLocal([tout]))
-        seq.eval()
-        out = tout.data().reshape(cur.shape)
-        del tin, tout
-        return [out]
-
-    def fuse(self,
-             input_tensors: list[tuple[kp.Tensor, list[int]]],
-             updated_algorithms: list[kp.Algorithm],
-             updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        if len(input_tensors) == 1:
-            return [input_tensors[0]]
-
-        def _fuse_two_sum(lhs: tuple[kp.Tensor, list[int]],
-                          rhs: tuple[kp.Tensor, list[int]]) -> tuple[kp.Tensor, list[int]]:
-            input_1, shape_1 = lhs[0], list(lhs[1])
-            input_2, shape_2 = rhs[0], list(rhs[1])
-
-            # 维度对齐（补 1 维）
-            if len(shape_1) < len(shape_2):
-                new_shape_1 = [1] * (len(shape_2) - len(shape_1)) + shape_1
-                new_shape_2 = shape_2
-            elif len(shape_2) < len(shape_1):
-                new_shape_1 = shape_1
-                new_shape_2 = [1] * (len(shape_1) - len(shape_2)) + shape_2
-            else:
-                new_shape_1 = shape_1
-                new_shape_2 = shape_2
-
-            # 广播输出形状
-            output_shape = []
-            for i in range(len(new_shape_1)):
-                if new_shape_1[i] == 1:
-                    output_shape.append(new_shape_2[i])
-                elif new_shape_2[i] == 1:
-                    output_shape.append(new_shape_1[i])
-                else:
-                    assert new_shape_1[i] == new_shape_2[i], f"MeanOp requires input {i} of the same shape"
-                    output_shape.append(new_shape_1[i])
-
-            new_in_1 = input_1
-            algorithms_1, next_tensors_1 = [], []
-            if output_shape[:-2] != new_shape_1[:-2] and not all(e == 1 for e in new_shape_1[:-2]):
-                final_shape_1 = output_shape[:-2] + list(new_shape_1[-2:])
-                new_in_1 = broadcast_to(input_1, new_shape_1, final_shape_1,
-                                        algorithms_1, next_tensors_1, self.manager)
-                updated_algorithms.extend(algorithms_1)
-                updated_tensors.extend(next_tensors_1)
-                new_shape_1 = final_shape_1
-
-            new_in_2 = input_2
-            algorithms_2, next_tensors_2 = [], []
-            if output_shape[:-2] != new_shape_2[:-2] and not all(e == 1 for e in new_shape_2[:-2]):
-                final_shape_2 = output_shape[:-2] + list(new_shape_2[-2:])
-                new_in_2 = broadcast_to(input_2, new_shape_2, final_shape_2,
-                                        algorithms_2, next_tensors_2, self.manager)
-                updated_algorithms.extend(algorithms_2)
-                updated_tensors.extend(next_tensors_2)
-                new_shape_2 = final_shape_2
-
-            if len(new_shape_1) == 1:
-                size_x_1, size_y_1, size_z_1 = new_shape_1[0], 1, 1
-                size_x_2, size_y_2, size_z_2 = new_shape_2[0], 1, 1
-            elif len(new_shape_1) == 2:
-                size_x_1, size_y_1, size_z_1 = new_shape_1[0], new_shape_1[1], 1
-                size_x_2, size_y_2, size_z_2 = new_shape_2[0], new_shape_2[1], 1
-            else:
-                size_x_1 = int(np.prod(new_shape_1[:-2]))
-                size_y_1 = new_shape_1[-2]
-                size_z_1 = new_shape_1[-1]
-                size_x_2 = int(np.prod(new_shape_2[:-2]))
-                size_y_2 = new_shape_2[-2]
-                size_z_2 = new_shape_2[-1]
-
-            size = np.prod(output_shape)
-            tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
-            updated_tensors.append(tensor_out)
+            size = int(np.prod(output_shape)) if len(output_shape) > 0 else 1
+            output_tensor = self.manager.tensor(np.zeros(size, dtype=np.float32))
+            updated_tensors.append(output_tensor)
 
             workgroup = (max(size_x_1, size_x_2), max(size_y_1, size_y_2), max(size_z_1, size_z_2))
-            updated_algorithms.append(
-                self.manager.algorithm(
-                    [new_in_1, new_in_2, tensor_out],
-                    self.compiled_shader,
-                    workgroup,
-                    [size_x_1, size_y_1, size_z_1, size_x_2, size_y_2, size_z_2],
-                    []
-                )
-            )
-            return tensor_out, output_shape
+            updated_algorithms.append(self.manager.algorithm(
+                [new_in_1, new_in_2, output_tensor],
+                self.add_shader,
+                workgroup,
+                [size_x_1, size_y_1, size_z_1, size_x_2, size_y_2, size_z_2],
+                []
+            ))
 
-        # 所有输入两两归约
+            return output_tensor, output_shape
+
         cur = input_tensors[0]
         for i in range(1, len(input_tensors)):
-            cur = _fuse_two_sum(cur, input_tensors[i])
+            cur = _binary_add_plan(cur, input_tensors[i])
 
-        # 按 1/N 缩放
-        tensor_out, output_shape = cur
-        total_elems = np.prod(output_shape)
-        out_tensor = self.manager.tensor(np.zeros(total_elems, dtype=np.float32))
-        updated_tensors.append(out_tensor)
+        sum_tensor, out_shape = cur
 
-        inv_n = float(np.float32(1.0 / len(input_tensors)))
+        n = float(1.0 / len(input_tensors))
+        output_size = int(np.prod(out_shape)) if len(out_shape) > 0 else 1
+        tensor_out = self.manager.tensor(np.zeros(output_size, dtype=np.float32))
+        updated_tensors.append(tensor_out)
 
-        algo_scale = self.manager.algorithm([tensor_out, out_tensor],
-                                            self.scale_shader,
-                                            (total_elems, 1, 1),
-                                            [inv_n], [])
+        algo_scale = self.manager.algorithm(
+            [sum_tensor, tensor_out],
+            self.scale_shader,
+            (output_size, 1, 1),
+            [n],
+            []
+        )
         updated_algorithms.append(algo_scale)
 
-        return [(tensor_out, output_shape)]
+        return [(tensor_out, out_shape)]

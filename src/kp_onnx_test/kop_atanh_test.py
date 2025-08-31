@@ -17,7 +17,7 @@ numpy_out = np.arctanh(numpy_in)
 print("ATANH Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = atanh_op.run([numpy_in])
+kp_out = atanh_op.run(numpy_in)[0]
 print(f"{atanh_op}:", time.time() - start_time, "seconds")
 
 print("ATANH Max error:", np.abs(numpy_out - kp_out).max())
