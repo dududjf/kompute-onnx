@@ -45,10 +45,10 @@ void main() {
         input_tensors = []
         for inp in inputs:
             if inp.dtype == np.float32:
-                numpy_in = inp.reshape(-1).astype(np.float32)
+                numpy_in = inp.reshape(-1)
                 tensor = self.manager.tensor(numpy_in)
             elif inp.dtype == np.int32:
-                numpy_in = inp.reshape(-1).astype(np.int32)
+                numpy_in = inp.reshape(-1)
                 tensor = self.manager.tensor_t(numpy_in, tensor_type=kp.TensorTypes.device)
             else:
                 raise TypeError(f"Unsupported dtype {inp.dtype}. Only float32 and int32 supported.")
