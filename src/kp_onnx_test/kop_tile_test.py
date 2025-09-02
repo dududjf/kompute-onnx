@@ -27,7 +27,7 @@ print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 
 print("Case 2")
 x = np.random.random((3, 2, 63, 511)).astype(np.float32)
-repeats = np.array([2, 1, 3, 1], dtype=np.int64)
+repeats = [2, 1, 3, 1]
 
 start_time = time.time()
 np_out = np.tile(x, repeats)
