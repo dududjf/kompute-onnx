@@ -43,10 +43,11 @@ void main()
 
         data_in = inputs[0].reshape(-1).astype(np.float32)
         data_shape = list(inputs[0].shape)
-        tile_in = inputs[1].reshape(-1).astype(np.int32) \
+        tile_in = inputs[1].astype(np.int32) \
             if isinstance(inputs[1], np.ndarray) else np.array(inputs[1], dtype=np.int32)
-        tile_shape = [tile_in.size]
         assert tile_in.size == len(data_shape), "TileOp: input tensor and repeats must have the same rank"
+        tile_in = tile_in.reshape(-1)
+        tile_shape = [tile_in.size]
         data_tensor = self.manager.tensor(data_in)
         tile_tensor = self.manager.tensor_t(tile_in, tensor_type=kp.TensorTypes.device)
         input_tensors = [(data_tensor, data_shape), (tile_tensor, tile_shape)]
@@ -83,6 +84,7 @@ void main()
         for i in reversed(range(len(data_shape))):
             dimension = data_shape[i]
             if repeats[i] > 1:
+                data_tensor = tensor_out
                 in_block_size = block_size * dimension
                 out_block_size = in_block_size * repeats[i]
                 group_count = np.prod(data_shape[:i]) if i > 0 else 1
@@ -95,7 +97,6 @@ void main()
                                                                  [in_block_size, out_block_size],
                                                                  []))
                 updated_tensors.append(tensor_out)
-                data_tensor = tensor_out
                 block_size = out_block_size
             else:
                 block_size *= dimension
