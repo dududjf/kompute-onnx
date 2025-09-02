@@ -101,22 +101,18 @@ void main(){
                     output_shape.append(a)
 
             new_in_1 = input_1
-            algorithms_1, next_tensors_1 = [], []
             if output_shape[:-2] != new_shape_1[:-2] and not all(e == 1 for e in new_shape_1[:-2]):
                 final_shape_1 = output_shape[:-2] + list(new_shape_1[-2:])
-                new_in_1 = broadcast_to(input_1, new_shape_1, final_shape_1, algorithms_1, next_tensors_1, self.manager)
+                new_in_1 = broadcast_to(input_1, new_shape_1, final_shape_1,
+                                        updated_algorithms, updated_tensors, self.manager)
                 new_shape_1 = final_shape_1
-                updated_algorithms.extend(algorithms_1)
-                updated_tensors.extend(next_tensors_1)
 
             new_in_2 = input_2
-            algorithms_2, next_tensors_2 = [], []
             if output_shape[:-2] != new_shape_2[:-2] and not all(e == 1 for e in new_shape_2[:-2]):
                 final_shape_2 = output_shape[:-2] + list(new_shape_2[-2:])
-                new_in_2 = broadcast_to(input_2, new_shape_2, final_shape_2, algorithms_2, next_tensors_2, self.manager)
+                new_in_2 = broadcast_to(input_2, new_shape_2, final_shape_2,
+                                        updated_algorithms, updated_tensors, self.manager)
                 new_shape_2 = final_shape_2
-                updated_algorithms.extend(algorithms_2)
-                updated_tensors.extend(next_tensors_2)
 
             if len(new_shape_1) == 1:
                 size_x_1 = new_shape_1[0]
