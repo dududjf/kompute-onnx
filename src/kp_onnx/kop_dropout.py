@@ -18,12 +18,10 @@ layout (binding = 0) readonly  buffer InBuf   { float in_data[];  };
 layout (binding = 1) readonly  buffer MaskBuf { float mask[];     };
 layout (binding = 2) writeonly buffer OutBuf  { float out_data[]; };
 
-
 layout (constant_id = 0) const float ratio_f = 0.0;
 
 void main() {
     uint gx = gl_GlobalInvocationID.x;
-
     out_data[gx] = in_data[gx] * mask[gx] * ratio_f;
 }
 """)

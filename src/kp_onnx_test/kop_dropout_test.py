@@ -22,7 +22,7 @@ dropout_op = DropoutOp(mgr)
 
 # ---------------- Case 1: 3D Tensor, ratio: None, traning_mode: None, seed: None ----------------
 print("Case 1: 3D Tensor, ratio: None, traning_mode: None, seed: None")
-x = np.random.random((2, 2, 2)).astype(np.float32)
+x = np.random.random((32, 512, 1024)).astype(np.float32)
 
 start_time = time.time()
 np_out = dropout_numpy(x)
@@ -32,17 +32,13 @@ start_time = time.time()
 kp_out = dropout_op.run(x)[0]
 print(f"{dropout_op}: ", time.time() - start_time, "seconds")
 
-print("x:",x)
-print("np_out:",np_out)
-print("kp_out:",kp_out)
-
 print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
 # ---------------- Case 2: 3D Tensor, ratio: 0.3, traning_mode: True, seed: None ----------------
 print("Case 2: 3D Tensor, ratio: 0.3, traning_mode: True, seed: None")
-x = np.random.random((2, 2, 2)).astype(np.float32)
+x = np.random.random((32, 512, 2048)).astype(np.float32)
 ratio = 0.3
 
 start_time = time.time()
@@ -53,17 +49,13 @@ start_time = time.time()
 kp_out = dropout_op.run(x, ratio, True)[0]
 print(f"{dropout_op}: ", time.time() - start_time, "seconds")
 
-print("x:",x)
-print("np_out:",np_out)
-print("kp_out:",kp_out)
-
 print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
 # ---------------- Case 3: 3D Tensor, ratio: 0.5, traning_mode: True, seed: 42 ----------------
 print("Case 3: 3D Tensor, ratio: 0.5, traning_mode: True, seed: 42")
-x = np.random.random((2, 5, 5)).astype(np.float32)
+x = np.random.random((512, 512)).astype(np.float32)
 ratio = 0.5
 seed = 42
 
@@ -75,10 +67,6 @@ start_time = time.time()
 kp_out = dropout_op.run(x, ratio, True, seed)
 print(f"{dropout_op}: ", time.time() - start_time, "seconds")
 
-print("x:",x)
-print("np_out:",np_out)
-print("kp_out:",kp_out)
-
 print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
@@ -89,16 +77,11 @@ x = np.random.random((2048,)).astype(np.float32)
 
 start_time = time.time()
 np_out = dropout_numpy(x, ratio=0.0, training_mode=True)
-print("NumPy (ratio=0):", time.time() - start_time, "seconds")
+print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
 kp_out = dropout_op.run(x, 0.0, True)[0]
 print(f"{dropout_op} (ratio=0): ", time.time() - start_time, "seconds")
-
-print("x:",x)
-print("np_out:",np_out)
-print("kp_out:",kp_out)
-
 print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
