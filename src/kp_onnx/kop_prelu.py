@@ -10,7 +10,7 @@ class PReLUOp:
 #version 450
 
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
-layout (binding = 0) buffer buf_in_tensor_data     { float in_tensor_data[]; };
+layout (binding = 0) buffer buf_in_tensor_data  { float in_tensor_data[]; };
 layout (binding = 1) buffer buf_in_tensor_slope { float in_tensor_slope[]; };
 layout (binding = 2) buffer buf_out_tensor      { float out_tensor[]; };
 layout (constant_id = 0) const float size_x_data = 0;
@@ -26,25 +26,24 @@ void main()
     uint gy = gl_GlobalInvocationID.y;
     uint gz = gl_GlobalInvocationID.z;
 
-    uint x_data = uint(size_x_data);
     uint y_data = uint(size_y_data);
-    uint z_data = uint(size_z_data);
-    uint stride_y_data = z_data;
+    uint stride_y_data = uint(size_z_data);
     uint stride_x_data = y_data * stride_y_data;
-    uint idx_data = min(gx, x_data - 1) * stride_x_data + min(gy, y_data - 1) * stride_y_data + min(gz, z_data - 1);
+    uint idx_data = gx * stride_x_data + gy * stride_y_data + gz;
 
     uint x_slope = uint(size_x_slope);
     uint y_slope = uint(size_y_slope);
     uint z_slope = uint(size_z_slope);
     uint stride_y_slope = z_slope;
     uint stride_x_slope = y_slope * stride_y_slope;
-    uint idx_slope = min(gx, x_slope - 1) * stride_x_slope + min(gy, y_slope - 1) * stride_y_slope + min(gz, z_slope - 1);
+    uint idx_slope = z_slope > 1 ? gz : 0;
+    if (y_slope > 1) idx_slope += gy * stride_y_slope;
+    if (x_slope > 1) idx_slope += gx * stride_x_slope;
 
-    // Compute PReLU: f(x) = max(0, x) + slope * min(0, x)
+    // Compute PReLU
     float data_val = in_tensor_data[idx_data];
     float slope_val = in_tensor_slope[idx_slope];
-    out_tensor[gx * max(stride_x_data, stride_x_slope) + gy * max(stride_y_data, stride_y_slope) + gz] = 
-        max(0.0, data_val) + slope_val * min(0.0, data_val);
+    out_tensor[idx_data] = data_val > 0 ? data_val : slope_val * data_val;
 }''')
 
     def __repr__(self):
@@ -52,11 +51,10 @@ void main()
         return f"PReLUOp({device_name})"
 
     def __str__(self):
-        device_name = self.manager.get_device_properties()['device_name']
-        return f"PReLUOp({device_name})"
+        return self.__repr__()
 
     def run(self, *inputs):
-        assert len(inputs) == 2, "PReLUOp requires 2 inputs: x and a"
+        assert len(inputs) == 2, "PReLUOp requires 2 inputs: data and slope"
 
         input_tensors = []
         for inp in inputs:
@@ -85,25 +83,38 @@ void main()
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         assert len(input_tensors) == 2, "PReLUOp requires 2 inputs: data and slope"
+
         tensor_data = input_tensors[0][0]
         shape_data = input_tensors[0][1]
         tensor_slope = input_tensors[1][0]
         shape_slope = input_tensors[1][1]
 
         # Handle dimension alignment
-        assert len(shape_slope) <= len(shape_data), "PReLUOp requires input slope to have less dimensions than input x"
-        if len(shape_slope) < len(shape_data):
+        assert len(shape_slope) <= len(shape_data), "PReLUOp requires slope to have less or equal dimensions than data"
+        if len(shape_slope) == 1 and shape_slope[0] > 1:
+            new_shape_slope = []
+            n = 0
+            for d in shape_data:
+                if d == shape_slope[0]:
+                    new_shape_slope.append(d)
+                    n += 1
+                else:
+                    new_shape_slope.append(1)
+            assert n == 1, "PReLUOp requires slope to be one of data dimensions if it has only one dimension"
+        elif len(shape_slope) < len(shape_data):
             new_shape_slope = [1] * (len(shape_data) - len(shape_slope)) + shape_slope
         else:
             new_shape_slope = shape_slope
+        for dim_data, dim_slope in zip(shape_data, new_shape_slope):
+            assert dim_slope == 1 or dim_slope == dim_data, \
+                "PReLUOp requires each slope dimension to be one or equal to the corresponding data dimension"
 
         # Broadcast parameter slope if needed
         new_slope = tensor_slope
-        algorithms_slope, next_tensors_slope = [], []
         if shape_data[:-2] != new_shape_slope[:-2] and not all(e == 1 for e in new_shape_slope[:-2]):
             final_shape_slope = shape_data[:-2] + list(new_shape_slope[-2:])
-            new_slope = broadcast_to(tensor_slope, new_shape_slope, final_shape_slope, algorithms_slope, next_tensors_slope, self.manager)
-            updated_algorithms.extend(algorithms_slope)
+            new_slope = broadcast_to(tensor_slope, new_shape_slope, final_shape_slope,
+                                     updated_algorithms, updated_tensors, self.manager)
             new_shape_slope = final_shape_slope
 
         # Determine size parameters
@@ -124,11 +135,7 @@ void main()
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
         updated_tensors.append(tensor_out)
 
-        workgroup = (
-            max(size_x_data, size_x_slope),
-            max(size_y_data, size_y_slope),
-            max(size_z_data, size_z_slope)
-        )
+        workgroup = (size_x_data, size_y_data, size_y_data)
         updated_algorithms.append(self.manager.algorithm(
             [tensor_data, new_slope, tensor_out],
             self.compiled_shader,

@@ -27,9 +27,8 @@ void main()
     uint in_offset = gx * in_block_size;
     uint out_offset = gx * out_block_size + gy * in_block_size;
 
-    for (uint i = 0; i < in_block_size; i++) {
-        out_tensor[out_offset + i] = in_tensor[in_offset + i];
-    }
+    for (uint i = 0; i < in_block_size; i++, in_offset++, out_offset++)
+        out_tensor[out_offset] = in_tensor[in_offset];
 }
 """)
 
@@ -42,12 +41,16 @@ void main()
     def run(self, *inputs):
         assert len(inputs) == 2, "TileOp needs input tensor and repeats"
 
-        input_tensors = []
-        for inp in inputs:
-            numpy_in = inp.reshape(-1).astype(np.float32) \
-                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
-            tensor = self.manager.tensor(numpy_in)
-            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
+        data_in = inputs[0].reshape(-1).astype(np.float32)
+        data_shape = list(inputs[0].shape)
+        tile_in = inputs[1].astype(np.int32) \
+            if isinstance(inputs[1], np.ndarray) else np.array(inputs[1], dtype=np.int32)
+        assert tile_in.size == len(data_shape), "TileOp: input tensor and repeats must have the same rank"
+        tile_in = tile_in.reshape(-1)
+        tile_shape = [tile_in.size]
+        data_tensor = self.manager.tensor(data_in)
+        tile_tensor = self.manager.tensor_t(tile_in, tensor_type=kp.TensorTypes.device)
+        input_tensors = [(data_tensor, data_shape), (tile_tensor, tile_shape)]
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -73,37 +76,29 @@ void main()
 
         data_tensor = input_tensors[0][0]
         data_shape = input_tensors[0][1]
-        repeats = input_tensors[1][0].data().astype(int)
-
-        assert len(data_shape) == len(repeats), "TileOp: input tensor and repeats must have the same rank"
+        repeats = input_tensors[1][0].data()
 
         tensor_out = data_tensor
-        current_shape = list(data_shape)
         block_size = 1
-        end = len(data_shape) - 1
 
-        while end >= 0:
-            repeat = repeats[end]
-            if repeat > 1:
-                dim_size = current_shape[end]
-                in_block_size = block_size * dim_size
-                out_block_size = in_block_size * repeat
-                group_count = np.prod(current_shape[:end]) if end > 0 else 1
+        for i in reversed(range(len(data_shape))):
+            dimension = data_shape[i]
+            if repeats[i] > 1:
+                data_tensor = tensor_out
+                in_block_size = block_size * dimension
+                out_block_size = in_block_size * repeats[i]
+                group_count = np.prod(data_shape[:i]) if i > 0 else 1
                 out_array = np.zeros(group_count * out_block_size, dtype=np.float32)
                 tensor_out = self.manager.tensor(out_array)
-                workgroup = (group_count, repeat, 1)
+                workgroup = (group_count, repeats[i], 1)
                 updated_algorithms.append(self.manager.algorithm([data_tensor, tensor_out],
                                                                  self.compiled_shader,
                                                                  workgroup,
                                                                  [in_block_size, out_block_size],
                                                                  []))
                 updated_tensors.append(tensor_out)
-                data_tensor = tensor_out
                 block_size = out_block_size
-                current_shape[end] = dim_size * repeat
-
             else:
-                block_size *= current_shape[end]
-            end -= 1
+                block_size *= dimension
 
-        return [(tensor_out, current_shape)]
+        return [(tensor_out, data_shape * repeats)]
