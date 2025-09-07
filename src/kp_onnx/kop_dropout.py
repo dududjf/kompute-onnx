@@ -10,7 +10,6 @@ DEFAULT_SEED = None
 class DropoutOp:
     def __init__(self, manager: kp.Manager):
         self.manager = manager
-        # 一元算子，local_size 全 1；不做越界判断；通过 size buffer 驱动 for 循环
         self.shader = compile_source(r"""
 #version 450
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
