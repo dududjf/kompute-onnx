@@ -14,35 +14,37 @@ class TriluOp:
         self.manager = manager
         self.shader = compile_source("""
 #version 450
-layout (local_size_x = 1) in;
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 layout (set = 0, binding = 0) readonly  buffer InBuf  { float in_buf[];  };
 layout (set = 0, binding = 1) writeonly buffer OutBuf { float out_buf[]; };
 
-layout (constant_id = 0) const float N_f = 0.0;   // 最后两维中的 N(行)
-layout (constant_id = 1) const float M_f = 0.0;   // 最后两维中的 M(列)
-layout (constant_id = 2) const float K_f = 0.0;   // 偏移 k（可正可负）
-layout (constant_id = 3) const float U_f = 1.0;   // upper 标志: 1=upper, 0=lower
+layout (constant_id = 0) const float N_f = 0.0;   // 行
+layout (constant_id = 1) const float M_f = 0.0;   // 列
+layout (constant_id = 2) const float K_f = 0.0;   // 偏移 k
+layout (constant_id = 3) const float U_f = 1.0;   // 1=upper, 0=lower
+layout (constant_id = 4) const float B_f = 1.0;   // 批次矩阵数 = ∏batch_dims
 
 void main() {
-    uint idx = gl_GlobalInvocationID.x;
+    uint j = gl_GlobalInvocationID.x; // 列
+    uint i = gl_GlobalInvocationID.y; // 行
+    uint b = gl_GlobalInvocationID.z; // 第 b 个矩阵
 
     uint N = uint(N_f);
     uint M = uint(M_f);
     int  k = int(K_f);
     bool upper = (U_f > 0.5);
+    uint B = uint(B_f);
 
-    // 还原到最后两维坐标 (i, j)
-    uint block = N * M;             // 单个矩阵的元素数
-    uint rem   = idx % block;       // 在该矩阵内的线性偏移
-    uint i     = rem / M;           // 行
-    uint j     = rem % M;           // 列
+    // 线性地址：b 块 + 行内偏移 + 列
+    uint block = N * M;
+    uint idx   = b * block + i * M + j;
 
-    // 判定是否保留
-    bool keep = upper ? (int(j) - int(i) >= k) : (int(i) - int(j) >= -k);
+    // 掩码判断：上三角(j - i >= k) / 下三角(i - j >= -k)
+    bool keep  = upper ? (int(j) - int(i) >= k)
+                       : (int(i) - int(j) >= -k);
 
-    float x = in_buf[idx];
-    out_buf[idx] = keep ? x : 0.0;
+    out_buf[idx] = keep ? in_buf[idx] : 0.0;
 }
 """)
 
@@ -52,7 +54,6 @@ void main() {
     __str__ = __repr__
 
     def run(self, *inputs):
-        # inputs: input[, k_scalar][, upper_scalar]
         input_tensors = []
         for inp in inputs:
             numpy_in = inp.reshape(-1).astype(np.float32) \
@@ -82,6 +83,8 @@ void main() {
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         in_tensor, in_shape = input_tensors[0]
         assert len(in_shape) >= 2, "Trilu expects rank >= 2"
+        batch_dims = in_shape[:-2]
+        B = int(np.prod(batch_dims)) if batch_dims else 1
         N = in_shape[-2]
         M = in_shape[-1]
         k = input_tensors[1][0].data() if len(input_tensors) >= 2 else DEFAULT_K
@@ -91,8 +94,8 @@ void main() {
         out_tensor = self.manager.tensor(np.zeros(size, dtype=np.float32))
         updated_tensors.append(out_tensor)
 
-        spec_consts = [float(N), float(M), float(k), float(upper)]
-        workgroup = (size, 1, 1)
+        spec_consts = [N, M, k, upper, B]
+        workgroup = (M, N, B)
         updated_algorithms.append(
             self.manager.algorithm(
                 [in_tensor, out_tensor],

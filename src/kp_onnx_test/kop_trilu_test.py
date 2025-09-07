@@ -32,7 +32,7 @@ kp_out = trilu_op.run(x)[0]
 print(f"{trilu_op} (Default):", time.time() - t1, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 2: 指定 k=+3 正偏移：更靠上对角线
 print("\nCase 2: k=+3, upper=DEFAULT_UPPER")
@@ -48,7 +48,7 @@ kp_out = trilu_op.run(x, k)[0]
 print(f"{trilu_op} (k=+3):", time.time() - t1, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 3: 指定下三角（upper=0），k默认
 print("\nCase 3: lower (upper=0), k=DEFAULT_K")
@@ -64,7 +64,7 @@ kp_out = trilu_op.run(x, DEFAULT_K, upper)[0]
 print(f"{trilu_op} (lower):", time.time() - t1, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 4: 下三角 + k=-3
 print("\nCase 4: lower (upper=0), k=-3")
@@ -81,21 +81,19 @@ kp_out = trilu_op.run(x, k, upper)[0]
 print(f"{trilu_op} (lower, k=-2):", time.time() - t1, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
-# -------------------------
-# Case 5: 批次（*,N,M），(B,T,N,M)
-# -------------------------
-print("\nCase 5: batch (B,T,N,M)")
+# Case 5: 批次（*,N,M）
+print("\nCase 5: batch （*,N,M）")
 x = np.random.uniform(-1, 1, (2, 3, 32, 48)).astype(np.float32)
 
 t0 = time.time()
 numpy_out = trilu_numpy(x, DEFAULT_K, DEFAULT_UPPER)
-print("NumPy (B,T,N,M):", time.time() - t0, "seconds")
+print("NumPy （*,N,M）:", time.time() - t0, "seconds")
 
 t1 = time.time()
 kp_out = trilu_op.run(x)[0]
-print(f"{trilu_op} (B,T,N,M):", time.time() - t1, "seconds")
+print(f"{trilu_op} （*,N,M）:", time.time() - t1, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))

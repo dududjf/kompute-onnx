@@ -1,138 +1,59 @@
-import kp
 import numpy as np
+import kp
 from .shader_utils import compile_source
 
-# ONNX Softmax 默认 axis=1
-DEFAULT_AXIS = 1
+DEFAULT_AXIS = -1
 
 
 class SoftmaxOp:
-    """
-    onnx::Softmax 的 Kompute 实现
-    """
-
     def __init__(self, manager: kp.Manager):
         self.manager = manager
-
-        # 1) 沿 axis reduce 最大值: 输出 buffer 大小 = STRIDE_BEFORE * STRIDE_AFTER
-        self.reduce_max_shader = compile_source(r"""
+        self.shader = compile_source("""
 #version 450
-layout(local_size_x = 1) in;
-layout(binding = 0) readonly buffer InBuf { float in_buf[]; };
-layout(binding = 1) writeonly buffer OutMax { float out_max[]; };
-layout(constant_id = 0) const float AXIS_SIZE_F     = 0.0;
-layout(constant_id = 1) const float STRIDE_BEFORE_F = 0.0;
-layout(constant_id = 2) const float STRIDE_AFTER_F  = 0.0;
+layout(local_size_x = 1, local_size_y = 1) in;
 
-void main(){
-    uint out_idx       = gl_GlobalInvocationID.x;        // 0 .. STRIDE_BEFORE*STRIDE_AFTER-1
-    uint AXIS_SIZE     = uint(AXIS_SIZE_F);
-    uint STRIDE_BEFORE = uint(STRIDE_BEFORE_F);
-    uint STRIDE_AFTER  = uint(STRIDE_AFTER_F);
+layout(set=0, binding=0) buffer InBuf  { float in_data[];  };
+layout(set=0, binding=1) buffer OutBuf { float out_data[]; };
 
-    // out_idx <-> (before, after)
-    uint before = out_idx / STRIDE_AFTER;
-    uint after  = out_idx % STRIDE_AFTER;
+layout(constant_id = 0) const float axis_size_f = 0;
+layout(constant_id = 1) const float block_size_f = 0;
 
-    // 输入中该组的起点（axis 上第0个）
-    uint base = before * AXIS_SIZE * STRIDE_AFTER + after;
+void main() {
+    uint gx = gl_GlobalInvocationID.x;
+    uint gy = gl_GlobalInvocationID.y;
 
-    float m = in_buf[base];
-    for(uint i=1u;i<AXIS_SIZE;++i){
-        float v = in_buf[base + i*STRIDE_AFTER];
-        if (v > m) m = v;
+    uint axis_size = uint(axis_size_f);
+    uint block_size = uint(block_size_f);
+
+    uint in_offset = gx * axis_size * block_size + gy;
+    uint initial_base = in_offset;
+
+    float max_val = in_data[in_offset];
+    for (uint i = 0; i < axis_size; ++i, in_offset += block_size) {
+        max_val = max(max_val, in_data[in_offset]);
     }
-    out_max[out_idx] = m;
-}
-""")
 
-        # 2) 逐元素: y = exp(x - max[group])
-        self.sub_exp_shader = compile_source(r"""
-#version 450
-layout(local_size_x = 1) in;
-layout(binding = 0) readonly buffer InBuf  { float in_buf[]; };
-layout(binding = 1) readonly buffer MaxBuf { float max_buf[]; };
-layout(binding = 2) writeonly buffer OutY  { float y_buf[]; };
-layout(constant_id = 0) const float AXIS_SIZE_F     = 0.0;
-layout(constant_id = 1) const float STRIDE_BEFORE_F = 0.0;
-layout(constant_id = 2) const float STRIDE_AFTER_F  = 0.0;
-
-void main(){
-    uint idx           = gl_GlobalInvocationID.x;        // 0 .. numel-1
-    uint AXIS_SIZE     = uint(AXIS_SIZE_F);
-    uint STRIDE_BEFORE = uint(STRIDE_BEFORE_F);
-    uint STRIDE_AFTER  = uint(STRIDE_AFTER_F);
-
-    // idx -> (before, axis_i, after)
-    uint group   = idx / STRIDE_AFTER;     // = before*AXIS_SIZE + axis_i
-    uint after   = idx % STRIDE_AFTER;
-    uint before  = group / AXIS_SIZE;
-
-    float mx = max_buf[before * STRIDE_AFTER + after];
-    float x  = in_buf[idx];
-    y_buf[idx] = exp(x - mx);
-}
-""")
-
-        # 3) 沿 axis reduce 求和: 输出大小 = STRIDE_BEFORE * STRIDE_AFTER
-        self.reduce_sum_shader = compile_source(r"""
-#version 450
-layout(local_size_x = 1) in;
-layout(binding = 0) readonly buffer InY     { float y_buf[]; };
-layout(binding = 1) writeonly buffer OutSum { float sum_buf[]; };
-layout(constant_id = 0) const float AXIS_SIZE_F     = 0.0;
-layout(constant_id = 1) const float STRIDE_BEFORE_F = 0.0;
-layout(constant_id = 2) const float STRIDE_AFTER_F  = 0.0;
-
-void main(){
-    uint out_idx       = gl_GlobalInvocationID.x;
-    uint AXIS_SIZE     = uint(AXIS_SIZE_F);
-    uint STRIDE_BEFORE = uint(STRIDE_BEFORE_F);
-    uint STRIDE_AFTER  = uint(STRIDE_AFTER_F);
-
-    uint before = out_idx / STRIDE_AFTER;
-    uint after  = out_idx % STRIDE_AFTER;
-    uint base   = before * AXIS_SIZE * STRIDE_AFTER + after;
-
-    float s = 0.0;
-    for(uint i=0u;i<AXIS_SIZE;++i){
-        s += y_buf[base + i*STRIDE_AFTER];
+    in_offset = initial_base;
+    float sum_exp = 0.0;
+    for (uint i = 0; i < axis_size; ++i, in_offset += block_size) {
+        sum_exp += exp(in_data[in_offset] - max_val);
     }
-    sum_buf[out_idx] = s;
-}
-""")
 
-        # 4) 逐元素: out = y / sum[group]
-        self.normalize_shader = compile_source(r"""
-#version 450
-layout(local_size_x = 1) in;
-layout(binding = 0) readonly buffer InY     { float y_buf[]; };
-layout(binding = 1) readonly buffer SumBuf  { float sum_buf[]; };
-layout(binding = 2) writeonly buffer OutBuf { float out_buf[]; };
-layout(constant_id = 0) const float AXIS_SIZE_F     = 0.0;
-layout(constant_id = 1) const float STRIDE_BEFORE_F = 0.0;
-layout(constant_id = 2) const float STRIDE_AFTER_F  = 0.0;
-
-void main(){
-    uint idx           = gl_GlobalInvocationID.x;
-    uint AXIS_SIZE     = uint(AXIS_SIZE_F);
-    uint STRIDE_BEFORE = uint(STRIDE_BEFORE_F);
-    uint STRIDE_AFTER  = uint(STRIDE_AFTER_F);
-
-    uint group   = idx / STRIDE_AFTER;     // = before*AXIS_SIZE + axis_i
-    uint after   = idx % STRIDE_AFTER;
-    uint before  = group / AXIS_SIZE;
-
-    float denom = sum_buf[before * STRIDE_AFTER + after];
-    float y     = y_buf[idx];
-    out_buf[idx] = (denom == 0.0) ? 0.0 : (y / denom);
+    in_offset = initial_base;
+    for (uint i = 0; i < axis_size; ++i, in_offset += block_size) {
+        float num = exp(in_data[in_offset] - max_val);
+        float den = sum_exp;               // sum_exp > 0，数值上更稳
+        out_data[in_offset] = num / den;
+    }
 }
 """)
 
     def __repr__(self):
-        return f"SoftmaxOp({self.manager.get_device_properties()['device_name']})"
+        device_name = self.manager.get_device_properties()['device_name']
+        return f"SoftmaxOp({device_name})"
 
-    __str__ = __repr__
+    def __str__(self):
+        return self.__repr__()
 
     def run(self, *inputs):
         input_tensors = []
@@ -162,57 +83,29 @@ void main(){
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        x_tensor, x_shape = input_tensors[0]
-        axis = int(input_tensors[1][0].data()) if len(input_tensors) > 1 and input_tensors[1][0] is not None else DEFAULT_AXIS
-        rank = len(x_shape)
-        if axis < 0:
-            axis += rank
-        assert 0 <= axis < rank, "axis out of range"
+        tensor_in, shape_in = input_tensors[0]
+        axis = int(input_tensors[1][0].data()) if len(input_tensors) > 1 else DEFAULT_AXIS
 
-        axis_size     = int(x_shape[axis])
-        stride_before = int(np.prod(x_shape[:axis])) if axis > 0 else 1
-        stride_after  = int(np.prod(x_shape[axis+1:])) if axis < rank-1 else 1
-        numel         = int(np.prod(x_shape)) if len(x_shape) else 1
-        groups        = int(stride_before * stride_after)  # reduce 输出大小
+        axis += len(shape_in) if axis < 0 else 0
 
-        # max_buf: groups
-        max_buf = self.manager.tensor(np.zeros(groups, dtype=np.float32))
-        updated_tensors.append(max_buf)
-        # y_buf: numel
-        y_buf   = self.manager.tensor(np.zeros(numel, dtype=np.float32))
-        updated_tensors.append(y_buf)
-        # sum_buf: groups
-        sum_buf = self.manager.tensor(np.zeros(groups, dtype=np.float32))
-        updated_tensors.append(sum_buf)
-        # out: numel
-        out_buf = self.manager.tensor(np.zeros(numel, dtype=np.float32))
-        updated_tensors.append(out_buf)
+        axis_size = shape_in[axis]
 
-        spec = [float(axis_size), float(stride_before), float(stride_after)]
+        group_x = int(np.prod(shape_in[:axis])) if axis >= 0 else 1
+        block_size = int(np.prod(shape_in[axis + 1:])) if axis + 1 < len(shape_in) else 1
+        total_size = int(np.prod(shape_in))
 
-        # 1) reduce_max
-        updated_algorithms.append(
-            self.manager.algorithm([x_tensor, max_buf],
-                                   self.reduce_max_shader,
-                                   (groups,1,1), spec, [])
-        )
-        # 2) sub_exp
-        updated_algorithms.append(
-            self.manager.algorithm([x_tensor, max_buf, y_buf],
-                                   self.sub_exp_shader,
-                                   (numel,1,1), spec, [])
-        )
-        # 3) reduce_sum
-        updated_algorithms.append(
-            self.manager.algorithm([y_buf, sum_buf],
-                                   self.reduce_sum_shader,
-                                   (groups,1,1), spec, [])
-        )
-        # 4) normalize
-        updated_algorithms.append(
-            self.manager.algorithm([y_buf, sum_buf, out_buf],
-                                   self.normalize_shader,
-                                   (numel,1,1), spec, [])
-        )
+        tensor_out = self.manager.tensor(np.zeros(total_size, dtype=np.float32))
+        updated_tensors.append(tensor_out)
 
-        return [(out_buf, x_shape)]
+        workgroup = (group_x, block_size, 1)
+
+        spec_consts = [axis_size, block_size]
+        updated_algorithms.append(self.manager.algorithm(
+            [tensor_in, tensor_out],
+            self.shader,
+            workgroup,
+            spec_consts,
+            []
+        ))
+
+        return [(tensor_out, shape_in)]

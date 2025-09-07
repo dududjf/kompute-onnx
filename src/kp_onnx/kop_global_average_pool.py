@@ -80,16 +80,12 @@ void main() {
         if len(in_shape) == 2:
             return [(tensor_in, list(in_shape))]
 
-        N = int(in_shape[0])
-        C = int(in_shape[1])
-        spatial = in_shape[2:] if len(in_shape) > 2 else []
-        S = int(np.prod(spatial, dtype=np.int64)) if spatial else 1
+        N, C = int(in_shape[0]), int(in_shape[1])
+        spatial = in_shape[2:]
+        S = int(np.prod(spatial, dtype=np.int64))
 
-        out_elems = N * C
         out_shape = [N, C] + [1] * len(spatial)
-        out_buf = np.zeros(out_elems, dtype=np.float32)
-        tensor_out = self.manager.tensor(out_buf)
-
+        tensor_out = self.manager.tensor(np.zeros(N * C, dtype=np.float32))
         spec_consts = [float(S), float(C)]
         algo = self.manager.algorithm(
             [tensor_in, tensor_out],
