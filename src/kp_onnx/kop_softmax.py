@@ -21,29 +21,28 @@ layout(constant_id = 1) const float block_size_f = 0;
 void main() {
     uint gx = gl_GlobalInvocationID.x;
     uint gy = gl_GlobalInvocationID.y;
-
-    uint axis_size = uint(axis_size_f);
+    
+    uint axis_size  = uint(axis_size_f);
     uint block_size = uint(block_size_f);
-
-    uint in_offset = gx * axis_size * block_size + gy;
-    uint initial_base = in_offset;
-
-    float max_val = in_data[in_offset];
-    for (uint i = 0; i < axis_size; ++i, in_offset += block_size) {
-        max_val = max(max_val, in_data[in_offset]);
+    
+    uint base = gx * axis_size * block_size + gy;
+    
+    float max_val = in_data[base];
+    for (uint i = 0u; i < axis_size; ++i) {
+        uint idx = base + i * block_size;
+        max_val = max(max_val, in_data[idx]);
     }
-
-    in_offset = initial_base;
+    
     float sum_exp = 0.0;
-    for (uint i = 0; i < axis_size; ++i, in_offset += block_size) {
-        sum_exp += exp(in_data[in_offset] - max_val);
+    for (uint i = 0u; i < axis_size; ++i) {
+        uint idx = base + i * block_size;
+        sum_exp += exp(in_data[idx] - max_val);
     }
-
-    in_offset = initial_base;
-    for (uint i = 0; i < axis_size; ++i, in_offset += block_size) {
-        float num = exp(in_data[in_offset] - max_val);
-        float den = sum_exp;               // sum_exp > 0，数值上更稳
-        out_data[in_offset] = num / den;
+    
+    float inv_sum = 1.0 / max(sum_exp, 1e-30); // 防 0
+    for (uint i = 0u; i < axis_size; ++i) {
+        uint idx = base + i * block_size;
+        out_data[idx] = exp(in_data[idx] - max_val) * inv_sum;
     }
 }
 """)
