@@ -27,22 +27,28 @@ void main() {
     
     uint base = gx * axis_size * block_size + gy;
     
-    float max_val = in_data[base];
+    uint  idx = base;
+    float max_val = in_data[idx];
     for (uint i = 1u; i < axis_size; ++i) {
-        uint idx = base + i * block_size;
-        max_val = max(max_val, in_data[idx]);
+        idx += block_size;
+        float v = in_data[idx];
+        max_val = max(max_val, v);
     }
     
+    idx = base;
     float sum_exp = 0.0;
     for (uint i = 0u; i < axis_size; ++i) {
-        uint idx = base + i * block_size;
-        sum_exp += exp(in_data[idx] - max_val);
+        float v = in_data[idx] - max_val;
+        sum_exp += exp(v);
+        idx += block_size;
     }
     
+    float inv_sum = 1.0 / sum_exp;
+    idx = base;
     for (uint i = 0u; i < axis_size; ++i) {
-        uint idx = base + i * block_size;
-        float num = exp(in_data[idx] - max_val);
-        out_data[idx] = num / sum_exp;
+        float v = in_data[idx] - max_val;
+        out_data[idx] = exp(v) * inv_sum;
+        idx += block_size;
     }
 }
 """)
