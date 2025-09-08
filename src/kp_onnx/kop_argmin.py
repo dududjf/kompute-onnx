@@ -15,34 +15,31 @@ class ArgMinOp:
         self.manager = manager
         self.shader_first = compile_source("""
 #version 450
-#extension GL_ARB_gpu_shader_int64 : require
 layout(local_size_x=1, local_size_y=1) in;
-layout(binding=0) readonly buffer InBuf  { float in_buf[]; };
-layout(binding=1) writeonly buffer OutBuf{ int out_buf[]; };
 
-layout(constant_id=0) const float AXIS_SIZE_F     = 0.0;
-layout(constant_id=1) const float STRIDE_BEFORE_F = 0.0;
-layout(constant_id=2) const float STRIDE_AFTER_F  = 0.0;
+layout(binding=0) readonly buffer InBuf  { float in_buf[]; };
+layout(binding=1) writeonly buffer OutBuf{ int   out_buf[]; };
+
+layout(constant_id=0) const float AXIS_SIZE_F    = 0.0;
+layout(constant_id=1) const float STRIDE_AFTER_F = 0.0;
 
 void main() {
-    uint AXIS_SIZE     = uint(AXIS_SIZE_F);
-    uint STRIDE_BEFORE = uint(STRIDE_BEFORE_F);
-    uint STRIDE_AFTER  = uint(STRIDE_AFTER_F);
+    uint AXIS_SIZE    = uint(AXIS_SIZE_F);
+    uint STRIDE_AFTER = uint(STRIDE_AFTER_F);
 
-    uint out_before = gl_GlobalInvocationID.x;
-    uint out_after  = gl_GlobalInvocationID.y;
-    if (out_before >= STRIDE_BEFORE || out_after >= STRIDE_AFTER) return;
+    uint out_before = gl_GlobalInvocationID.x;  // ∈ [0, stride_before)
+    uint out_after  = gl_GlobalInvocationID.y;  // ∈ [0, stride_after)
 
-    uint base = out_before * AXIS_SIZE * STRIDE_AFTER + out_after;
+    uint base = (out_before * AXIS_SIZE) * STRIDE_AFTER + out_after;
 
     float min_val = in_buf[base];
     uint  min_idx = 0u;
     base += STRIDE_AFTER;
     for (uint i = 1u; i < AXIS_SIZE; ++i, base += STRIDE_AFTER) {
         float v = in_buf[base];
-        if (v < min_val) { 
-            min_val = v; 
-            min_idx = i; 
+        if (v < min_val) {
+            min_val = v;
+            min_idx = i;
         }
     }
     out_buf[out_before * STRIDE_AFTER + out_after] = int(min_idx);
@@ -50,41 +47,36 @@ void main() {
 """)
         self.shader_last = compile_source("""
 #version 450
-#extension GL_ARB_gpu_shader_int64 : require
 layout(local_size_x=1, local_size_y=1) in;
-layout(binding=0) readonly buffer InBuf  { float in_buf[]; };
-layout(binding=1) writeonly buffer OutBuf{ int out_buf[]; };
 
-layout(constant_id=0) const float AXIS_SIZE_F     = 0.0;
-layout(constant_id=1) const float STRIDE_BEFORE_F = 0.0;
-layout(constant_id=2) const float STRIDE_AFTER_F  = 0.0;
+layout(binding=0) readonly buffer InBuf  { float in_buf[]; };
+layout(binding=1) writeonly buffer OutBuf{ int   out_buf[]; };
+
+layout(constant_id=0) const float AXIS_SIZE_F    = 0.0;
+layout(constant_id=1) const float STRIDE_AFTER_F = 0.0;
 
 void main() {
-    uint AXIS_SIZE     = uint(AXIS_SIZE_F);
-    uint STRIDE_BEFORE = uint(STRIDE_BEFORE_F);
-    uint STRIDE_AFTER  = uint(STRIDE_AFTER_F);
+    uint AXIS_SIZE    = uint(AXIS_SIZE_F);
+    uint STRIDE_AFTER = uint(STRIDE_AFTER_F);
 
-    uint out_before = gl_GlobalInvocationID.x;
-    uint out_after  = gl_GlobalInvocationID.y;
-    if (out_before >= STRIDE_BEFORE || out_after >= STRIDE_AFTER) return;
+    uint out_before = gl_GlobalInvocationID.x;  // ∈ [0, stride_before)
+    uint out_after  = gl_GlobalInvocationID.y;  // ∈ [0, stride_after)
 
-    uint base = out_before * AXIS_SIZE * STRIDE_AFTER + out_after;
+    uint base = (out_before * AXIS_SIZE) * STRIDE_AFTER + out_after;
 
     float min_val = in_buf[base];
     uint  min_idx = 0u;
     base += STRIDE_AFTER;
-
     for (uint i = 1u; i < AXIS_SIZE; ++i, base += STRIDE_AFTER) {
         float v = in_buf[base];
-        // 选“最后一个最小值”：小于等于（相等时覆盖）
         if (v <= min_val) {
             min_val = v;
             min_idx = i;
         }
     }
-
     out_buf[out_before * STRIDE_AFTER + out_after] = int(min_idx);
 }
+
 """)
 
     def __repr__(self):
@@ -156,7 +148,7 @@ void main() {
                 [tensor_in, tensor_out],
                 shader,
                 workgroup,
-                [axis_size, stride_before, stride_after],
+                [axis_size, stride_after],
                 []
             )
         )
