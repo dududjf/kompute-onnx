@@ -15,9 +15,10 @@ class ArgMinOp:
         self.manager = manager
         self.shader_first = compile_source("""
 #version 450
+#extension GL_ARB_gpu_shader_int64 : require
 layout(local_size_x=1, local_size_y=1) in;
 layout(binding=0) readonly buffer InBuf  { float in_buf[]; };
-layout(binding=1) writeonly buffer OutBuf{ float out_buf[]; };
+layout(binding=1) writeonly buffer OutBuf{ int out_buf[]; };
 
 layout(constant_id=0) const float AXIS_SIZE_F     = 0.0;
 layout(constant_id=1) const float STRIDE_BEFORE_F = 0.0;
@@ -44,14 +45,15 @@ void main() {
             min_idx = i; 
         }
     }
-    out_buf[out_before * STRIDE_AFTER + out_after] = float(min_idx);
+    out_buf[out_before * STRIDE_AFTER + out_after] = int(min_idx);
 }
 """)
         self.shader_last = compile_source("""
 #version 450
+#extension GL_ARB_gpu_shader_int64 : require
 layout(local_size_x=1, local_size_y=1) in;
 layout(binding=0) readonly buffer InBuf  { float in_buf[]; };
-layout(binding=1) writeonly buffer OutBuf{ float out_buf[]; };
+layout(binding=1) writeonly buffer OutBuf{ int out_buf[]; };
 
 layout(constant_id=0) const float AXIS_SIZE_F     = 0.0;
 layout(constant_id=1) const float STRIDE_BEFORE_F = 0.0;
@@ -81,7 +83,7 @@ void main() {
         }
     }
 
-    out_buf[out_before * STRIDE_AFTER + out_after] = float(min_idx);
+    out_buf[out_before * STRIDE_AFTER + out_after] = int(min_idx);
 }
 """)
 
@@ -110,6 +112,7 @@ void main() {
         seq.record(kp.OpTensorSyncLocal([tensor_out]))
         seq.eval()
 
+        print(tensor_out.data().dtype)
         output = tensor_out.data().reshape(output_shape).astype(np.int64)
 
         for tensor, _ in input_tensors:
@@ -144,7 +147,7 @@ void main() {
         if output_size <= 0:
             output_size = 1
 
-        tensor_out = self.manager.tensor(np.zeros(output_size, dtype=np.float32))
+        tensor_out = self.manager.tensor_t(np.zeros(output_size, dtype=np.int32), tensor_type=kp.TensorTypes.device)
         updated_tensors.append(tensor_out)
         workgroup = (stride_before, stride_after, 1)
         shader = self.shader_last if select_last_index else self.shader_first
