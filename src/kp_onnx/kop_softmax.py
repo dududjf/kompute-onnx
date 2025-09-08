@@ -28,7 +28,7 @@ void main() {
     uint base = gx * axis_size * block_size + gy;
     
     float max_val = in_data[base];
-    for (uint i = 0u; i < axis_size; ++i) {
+    for (uint i = 1u; i < axis_size; ++i) {
         uint idx = base + i * block_size;
         max_val = max(max_val, in_data[idx]);
     }
@@ -39,10 +39,10 @@ void main() {
         sum_exp += exp(in_data[idx] - max_val);
     }
     
-    float inv_sum = 1.0 / max(sum_exp, 1e-30); // 防 0
     for (uint i = 0u; i < axis_size; ++i) {
         uint idx = base + i * block_size;
-        out_data[idx] = exp(in_data[idx] - max_val) * inv_sum;
+        float num = exp(in_data[idx] - max_val);
+        out_data[idx] = num / sum_exp;
     }
 }
 """)
