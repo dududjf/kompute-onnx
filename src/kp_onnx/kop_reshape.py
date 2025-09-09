@@ -25,7 +25,7 @@ class ReshapeOp:
         tensor_out, output_shape = output_tensor_and_shape[0]
 
         output = np.array(tensor_out.data).reshape(output_shape)
-        return (output,)
+        return [output]
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]],shape_tensors: list[kp.Tensor],updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
