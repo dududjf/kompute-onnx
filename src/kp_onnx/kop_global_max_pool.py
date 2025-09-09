@@ -21,8 +21,8 @@ void main() {
     uint base = gx * block;
 
     float max_val = in_buf[base];
-    for (uint i = 1u; i < block; ++i) {
-        max_val = max(max_val, in_buf[base + i]);
+    for (uint i = 1; i < block; ++i, ++base) {
+        max_val = max(max_val, in_buf[base]);
     }
     out_buf[gx] = max_val;
 }
@@ -76,7 +76,6 @@ void main() {
             num_prefix = int(np.prod(prefix_shape, dtype=np.int64)) if len(prefix_shape) > 0 else 1
             H = in_shape[-2]
             W = in_shape[-1]
-
 
         tensor_out = self.manager.tensor(np.zeros(num_prefix, dtype=np.float32))
         block = int(H) * int(W)

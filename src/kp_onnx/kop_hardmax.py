@@ -25,14 +25,14 @@ void main() {
     uint axis_size  = uint(axis_size_f);
     uint block_size = uint(block_size_f);
 
-    uint base = gx * axis_size * block_size + gy;
-    float m = in_data[base];
-    uint max_idx = base;
-    uint initial_base = base;
+    uint initial_base = gx * axis_size * block_size + gy;
+    float max_value = in_data[initial_base];
+    uint max_idx = initial_base;
     
+    uint base = initial_base;
     for (uint i = 0u; i < axis_size; ++i, base += block_size) {
-        if (in_data[base] > m) {
-            m = in_data[base];
+        if (in_data[base] > max_value) {
+            max_value = in_data[base];
             max_idx = base;
         }
     }

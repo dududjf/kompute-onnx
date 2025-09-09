@@ -25,9 +25,9 @@ void main() {
     uint axis_size = uint(axis_size_f);
     uint block_size = uint(block_size_f);
 
-    uint in_offset = gx * axis_size * block_size + gy;
-    uint initial_base = in_offset;
-
+    uint initial_base = gx * axis_size * block_size + gy;
+    
+    uint in_offset = initial_base;
     float max_val = in_data[in_offset];
     for (uint i = 0; i < axis_size; ++i, in_offset += block_size) {
         max_val = max(max_val, in_data[in_offset]);
