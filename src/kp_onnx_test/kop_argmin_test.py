@@ -89,15 +89,15 @@ print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 print()
 
-# Case 5: 3D 张量，轴 1，不保持维度
-print("Case 5: 3D 张量，轴 1，不保持维度")
+# Case 5: 3D 张量，轴 2，不保持维度
+print("Case 5: 3D 张量，轴 2，不保持维度")
 numpy_in = np.random.uniform(-8, 8, (128, 256, 64)).astype(np.float32)
 start_time = time.time()
-numpy_out = onnx_argmin(numpy_in, axis=1, keepdims=False)
+numpy_out = onnx_argmin(numpy_in, axis=2, keepdims=False)
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = argmin_op.run(numpy_in, 1, False)[0]
+kp_out = argmin_op.run(numpy_in, 2, 0)[0]
 print(f"{argmin_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
