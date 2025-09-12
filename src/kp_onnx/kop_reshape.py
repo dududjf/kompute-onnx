@@ -18,19 +18,16 @@ class ReshapeOp:
     def run(self, *inputs):
         assert len(inputs) >= 2, "ReshapeOp requires at least data and target_shape"
         input_tensors = []
-        data_in = np.array(inputs[0], dtype=np.float32).reshape(-1)
-        data_shape = list(inputs[0].shape)
-        tensor_data = self.manager.tensor(data_in)
-        input_tensors.append((tensor_data, data_shape))
-
-        target_shape = np.array(inputs[1], dtype=np.int32).reshape(-1)
-        tensor_shape = self.manager.tensor(target_shape)
-        input_tensors.append((tensor_shape, target_shape.tolist()))
-
-        if len(inputs) > 2:
-            allowzero_val = [int(inputs[2])]
-            tensor_allowzero = self.manager.tensor(np.array(allowzero_val, dtype=np.int32))
-            input_tensors.append((tensor_allowzero, allowzero_val))
+        for i, inp in enumerate(inputs):
+            if i == 0:
+                numpy_in = inp.reshape(-1).astype(np.float32) \
+                    if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+                tensor = self.manager.tensor(numpy_in)
+                input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
+            else:
+                numpy_in = np.array(inp, dtype=np.int32).reshape(-1)
+                tensor = self.manager.tensor(numpy_in)
+                input_tensors.append((tensor, list(numpy_in.shape)))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -43,7 +40,7 @@ class ReshapeOp:
         seq.record(kp.OpTensorSyncLocal([tensor_out]))
         seq.eval()
 
-        tensor_out.data()[:] = data_in
+        tensor_out.data()[:] = input_tensors[0][0].data()
         output = tensor_out.data().reshape(output_shape)
 
         for tensor, _ in input_tensors:
@@ -54,18 +51,18 @@ class ReshapeOp:
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         assert len(input_tensors) >= 2, "ReshapeOp requires data and target_shape"
-
-        target_shape_list = input_tensors[1][1]
+        target_shape_list = input_tensors[1][0].data().astype(np.int32).tolist()
+        original_shape = input_tensors[0][1]
 
         if len(input_tensors) > 2:
-            allowzero = int(input_tensors[2][1][0])
+            allowzero = int(input_tensors[2][0].data().item())
         else:
             allowzero = self.allowzero
 
         new_shape = []
         for i, dim in enumerate(target_shape_list):
             if dim == 0 and allowzero == 0:
-                new_shape.append(input_tensors[0][1][i])
+                new_shape.append(original_shape[i])
             else:
                 new_shape.append(dim)
 
@@ -78,7 +75,7 @@ class ReshapeOp:
             else:
                 known_prod *= dim
 
-        total = int(np.prod(input_tensors[0][1]))
+        total = int(np.prod(original_shape))
         if neg_idx != -1:
             new_shape[neg_idx] = total // known_prod
 
