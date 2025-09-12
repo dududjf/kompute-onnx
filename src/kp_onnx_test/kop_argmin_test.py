@@ -3,6 +3,7 @@ import numpy as np
 import time
 from kp_onnx.kop_argmin import ArgMinOp, DEFAULT_AXIS, DEFAULT_KEEPDIMS
 
+
 def onnx_argmin(data, axis=0, keepdims=True, select_last_index=False):
 
     def _argmin(data, axis=0, keepdims=True):
@@ -24,6 +25,7 @@ def onnx_argmin(data, axis=0, keepdims=True, select_last_index=False):
     return (
         _argmin_use_numpy_select_last_index(data, axis=axis, keepdims=keepdims),
     )
+
 
 device_id = 0
 mgr = Manager(device_id)
@@ -123,7 +125,7 @@ numpy_out = onnx_argmin(numpy_in, select_last_index=True)[0]
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = argmin_op.run(numpy_in, DEFAULT_AXIS, DEFAULT_KEEPDIMS, True)[0]
+kp_out = argmin_op.run(numpy_in, DEFAULT_AXIS, DEFAULT_KEEPDIMS, 1)[0]
 print(f"{argmin_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))

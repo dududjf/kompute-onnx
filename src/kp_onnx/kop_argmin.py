@@ -4,7 +4,7 @@ from .shader_utils import compile_source
 
 DEFAULT_AXIS = 0
 DEFAULT_KEEPDIMS = True # 是否保持维度
-DEFAULT_SELECT_LAST_INDEX = False  # False=第一个最小值, True=最后一个最小值
+DEFAULT_SELECT_LAST_INDEX = 0  # 0=第一个最小值, 1=最后一个最小值
 
 class ArgMinOp:
     """
