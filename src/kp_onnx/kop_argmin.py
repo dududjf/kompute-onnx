@@ -3,7 +3,7 @@ import numpy as np
 from .shader_utils import compile_source
 
 DEFAULT_AXIS = 0
-DEFAULT_KEEPDIMS = 1 # 是否保持维度
+DEFAULT_KEEPDIMS = True # 是否保持维度
 DEFAULT_SELECT_LAST_INDEX = 0  # 0=第一个最小值, 1=最后一个最小值
 
 class ArgMinOp:
@@ -85,7 +85,6 @@ void main() {
         seq.record(kp.OpTensorSyncLocal([tensor_out]))
         seq.eval()
 
-        print(tensor_out.data().dtype)
         output = tensor_out.data().reshape(output_shape).astype(np.int64)
 
         for tensor, _ in input_tensors:
@@ -99,7 +98,7 @@ void main() {
         rank = len(shape)
         axis = int(input_tensors[1][0].data().reshape(-1)[0]) if len(input_tensors) > 1 \
             else DEFAULT_AXIS
-        keepdims = int(input_tensors[2][0].data().reshape(-1)[0]) if len(input_tensors) > 2 \
+        keepdims = bool(input_tensors[2][0].data().reshape(-1)[0]) if len(input_tensors) > 2 \
             else DEFAULT_KEEPDIMS
         select_last_index = int(input_tensors[3][0].data().reshape(-1)[0]) if len(input_tensors) > 3 \
             else DEFAULT_SELECT_LAST_INDEX
