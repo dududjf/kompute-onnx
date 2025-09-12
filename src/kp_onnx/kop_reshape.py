@@ -3,9 +3,8 @@ import kp
 
 
 class ReshapeOp:
-    def __init__(self, manager: kp.Manager, allowzero: int = 0):
+    def __init__(self, manager: kp.Manager):
         self.manager = manager
-        self.allowzero = int(allowzero)
 
     def __repr__(self):
         device_name = self.manager.get_device_properties()['device_name']
@@ -16,53 +15,63 @@ class ReshapeOp:
         return f"ReshapeOp({device_name})"
 
     def run(self, *inputs):
+        assert len(inputs) >= 2, "ReshapeOp requires at least data and target_shape"
         data = inputs[0]
-        shape = np.array(inputs[1], dtype=int)
+        target_shape = np.array(inputs[1], dtype=int)
+        allowzero = int(inputs[2]) if len(inputs) >= 3 and inputs[2] is not None else 0
 
-        if len(inputs) >= 3 and inputs[2] is not None:
-            allowzero = int(inputs[2]) == 1
-        else:
-            allowzero = int(getattr(self, "allowzero", 0)) == 1
+        tensor_data = self.manager.tensor(data.reshape(-1).astype(np.float32))
+        tensor_shape = self.manager.tensor(target_shape.astype(np.int32))
+        tensor_allowzero = self.manager.tensor(np.array([allowzero], dtype=np.int32))
 
-        new_shape = np.copy(shape)
-        if not allowzero:
-            zeros_idx = np.where(new_shape == 0)
-            new_shape[zeros_idx] = np.array(data.shape)[zeros_idx]
-
-        neg_idx = None
-        known_prod = 1
-        for i, dim in enumerate(new_shape):
-            if dim == -1:
-                if neg_idx is not None:
-                    raise ValueError("Only one dimension can be -1")
-                neg_idx = i
-            else:
-                known_prod *= dim
-        total = int(np.prod(data.shape))
-        if neg_idx is not None:
-            if known_prod == 0 or total % known_prod != 0:
-                raise ValueError("Cannot infer -1 dimension")
-            new_shape[neg_idx] = total // known_prod
-
-        if data.size == 0:
-            return [data.reshape(new_shape)]
-
-        input_tensor = self.manager.tensor(data.reshape(-1).astype(np.float32))
+        input_tensors = [
+            (tensor_data, list(data.shape)),
+            (tensor_shape, list(target_shape.shape)),
+            (tensor_allowzero, [])
+        ]
 
         updated_algorithms, updated_tensors = [], []
-        output_tensor_and_shape = self.fuse([(input_tensor, list(new_shape))],updated_algorithms,updated_tensors)
+        output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
         tensor_out, output_shape = output_tensor_and_shape[0]
 
-        output = data.reshape(new_shape)
+        tensor_out.data()[:] = tensor_data.data()
 
-        del input_tensor
+        output = tensor_out.data().reshape(output_shape)
+
+        for tensor, _ in input_tensors:
+            del tensor
         del updated_tensors
         return [output]
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        tensor_in, tensor_shape = input_tensors[0]
-        prod = int(np.prod(tensor_shape))
-        tensor_out = self.manager.tensor(np.zeros(prod, dtype=np.float32))
+
+        tensor_data, input_shape_list = input_tensors[0]
+        tensor_shape, _ = input_tensors[1]
+        tensor_allowzero, _ = input_tensors[2]
+
+        target_shape_list = tensor_shape.data().astype(int).tolist()
+        allowzero = bool(tensor_allowzero.data()[0])
+
+        new_shape = [0] * len(target_shape_list)
+        for i, dim in enumerate(target_shape_list):
+            if dim != 0 or allowzero:
+                new_shape[i] = dim
+            else:
+                new_shape[i] = input_shape_list[i]
+
+        neg_idx = -1
+        known_prod = 1
+        for i, dim in enumerate(new_shape):
+            if dim == -1:
+                neg_idx = i
+            else:
+                known_prod *= dim
+        total = np.prod(input_shape_list)
+        if neg_idx != -1:
+            new_shape[neg_idx] = total // known_prod
+
+        tensor_out = self.manager.tensor(np.zeros(np.prod(new_shape), dtype=np.float32))
         updated_tensors.append(tensor_out)
-        return [(tensor_out, tensor_shape)]
+
+        return [(tensor_out, new_shape)]
