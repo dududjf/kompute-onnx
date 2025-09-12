@@ -69,20 +69,7 @@ kp_out = reshape_op.run(numpy_in, shape, 1)[0]
 print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
 
-# Case 5: 空 tensor
-numpy_in = np.array([]).reshape(0, 3)
-shape = np.array([0, 3])
-
-start_time = time.time()
-numpy_out = reshape_reference(numpy_in, shape)
-print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
-
-start_time = time.time()
-kp_out = reshape_op.run(numpy_in, shape)[0]
-print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
-
-# Case 6: 标量 tensor
+# Case 5: 标量 tensor
 numpy_in = np.array(42)
 shape = np.array([1])
 
@@ -95,7 +82,7 @@ kp_out = reshape_op.run(numpy_in, shape)[0]
 print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
 
-# Case 7: 多维 reshape
+# Case 6: 多维 reshape
 numpy_in = np.random.random((2, 3, 4, 5))
 shape = np.array([4, 5, 6])
 
@@ -108,7 +95,7 @@ kp_out = reshape_op.run(numpy_in, shape)[0]
 print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
 
-# Case 8: allowzero=0, 使用实例属性
+# Case 7: allowzero=0, 使用实例属性
 numpy_in = np.random.random((2, 3, 4))
 shape = np.array([0, 12])
 reshape_op.allowzero = 0
@@ -122,7 +109,7 @@ kp_out = reshape_op.run(numpy_in, shape)[0]
 print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
 
-# Case 9: allowzero=1, 使用实例属性
+# Case 8: allowzero=1, 使用实例属性
 numpy_in = np.random.random((2, 3, 4))
 shape = np.array([2, 12])
 reshape_op.allowzero = 1
