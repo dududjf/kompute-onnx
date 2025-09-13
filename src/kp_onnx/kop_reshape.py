@@ -40,7 +40,6 @@ class ReshapeOp:
         seq.record(kp.OpTensorSyncLocal([tensor_out]))
         seq.eval()
 
-        tensor_out.data()[:] = input_tensors[0][0].data()
         output = tensor_out.data().reshape(output_shape)
 
         for tensor, _ in input_tensors:
@@ -83,6 +82,5 @@ class ReshapeOp:
             f"Reshape total elements mismatch: input={total}, new_shape={new_shape}"
         )
 
-        tensor_out = self.manager.tensor(np.zeros(total, dtype=np.float32))
-        updated_tensors.append(tensor_out)
+        tensor_out = input_tensors[0][0]
         return [(tensor_out, new_shape)]
