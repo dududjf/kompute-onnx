@@ -4,7 +4,7 @@ from .shader_utils import compile_source
 
 DEFAULT_AXIS = 0
 DEFAULT_KEEP_DIMS = True
-DEFAULT_SELECT_LAST_INDEX = False
+DEFAULT_SELECT_LAST_INDEX = 0
 
 
 class ArgMaxOp:
@@ -19,6 +19,7 @@ layout(set=0, binding=1) buffer OutBuf { uint out_data[];    };
 
 layout(constant_id = 0) const float axis_size_f = 0;
 layout(constant_id = 1) const float block_size_f = 0;
+layout(constant_id = 2) const float select_last_f = 0;
 
 void main() {
     uint gx = gl_GlobalInvocationID.x;
@@ -26,55 +27,32 @@ void main() {
 
     uint axis_size = uint(axis_size_f);
     uint block_size = uint(block_size_f);
+    uint select_last = uint(select_last_f);
 
     uint base_idx = gx * axis_size * block_size + gy;
 
     float max_val = in_data[base_idx];
     uint max_idx = 0u;
+    base_idx += block_size;
 
-    for (uint i = 0; i < axis_size; ++i, base_idx += block_size) {
-        if (in_data[base_idx] > max_val) {
-            max_val = in_data[base_idx];
-            max_idx = i;
+    if (select_last == 1u) {
+        for (uint i = 1u; i < axis_size; ++i, base_idx += block_size) {
+            if (in_data[base_idx] >= max_val) {
+                max_val = in_data[base_idx];
+                max_idx = i;
+            }
+        }
+    } 
+    else {
+        for (uint i = 1u; i < axis_size; ++i, base_idx += block_size) {
+            if (in_data[base_idx] > max_val) {
+                max_val = in_data[base_idx];
+                max_idx = i;
+            }
         }
     }
-
-    uint out_idx = gx * block_size + gy;
-    out_data[out_idx] = max_idx;
+    out_data[gx * block_size + gy] = max_idx;
 }
-""")
-        self.shader_last = compile_source("""
-#version 450
-layout(local_size_x = 1, local_size_y = 1) in;
-
-layout(set=0, binding=0) buffer InBuf  { float in_data[];  };
-layout(set=0, binding=1) buffer OutBuf { uint out_data[];    };
-
-layout(constant_id = 0) const float axis_size_f = 0;
-layout(constant_id = 1) const float block_size_f = 0;
-
-void main() {
-    uint gx = gl_GlobalInvocationID.x;
-    uint gy = gl_GlobalInvocationID.y;
-
-    uint axis_size = uint(axis_size_f);
-    uint block_size = uint(block_size_f);
-
-    uint base_idx = gx * axis_size * block_size + gy;
-
-    float max_val = in_data[base_idx];
-    uint max_idx = 0u;
-
-    for (uint i = 0; i < axis_size; ++i, base_idx += block_size) {
-        if (in_data[base_idx] >= max_val) {
-            max_val = in_data[base_idx];
-            max_idx = i;
-        }
-    }
-
-    uint out_idx = gx * block_size + gy;
-    out_data[out_idx] = max_idx;
-}        
 """)
 
     def __repr__(self):
@@ -116,8 +94,7 @@ void main() {
 
         axis = int(input_tensors[1][0].data()) if len(input_tensors) >= 2 else DEFAULT_AXIS
         keepdims = int(input_tensors[2][0].data()) != 0 if len(input_tensors) >= 3 else DEFAULT_KEEP_DIMS
-        select_last_index = int(input_tensors[3][0].data()) != 0 \
-            if len(input_tensors) >= 4 else DEFAULT_SELECT_LAST_INDEX
+        select_last_index = int(input_tensors[3][0].data()) if len(input_tensors) >= 4 else DEFAULT_SELECT_LAST_INDEX
 
         axis += len(shape_in) if axis < 0 else 0
 
@@ -130,19 +107,16 @@ void main() {
 
         workgroup = (batch_size, block_size, 1)
 
-        spec_consts = [axis_size, block_size]
+        spec_consts = [axis_size, block_size, select_last_index]
         updated_algorithms.append(self.manager.algorithm(
             [tensor_in, tensor_out],
-            self.shader_last if select_last_index else self.shader,
+            self.shader,
             workgroup,
             spec_consts,
             []
         ))
 
-        if keepdims:
-            output_shape = list(shape_in)
-            output_shape[axis] = 1
-        else:
-            output_shape = [shape_in[i] for i in range(len(shape_in)) if i != axis]
+        output_shape = list(shape_in)
+        output_shape[axis:axis + 1] = [1] if keepdims else []
 
         return [(tensor_out, output_shape)]
