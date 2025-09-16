@@ -15,14 +15,14 @@ class EyeLikeOp:
 layout(local_size_x = 1, local_size_y = 1) in;
 layout(binding = 0) writeonly buffer Out { float out_buf[]; };
 
-layout(constant_id = 0) const float ROWS_F = 0.0;
-layout(constant_id = 1) const float COLS_F = 0.0;
-layout(constant_id = 2) const float K_F    = 0.0;
+layout(constant_id = 0) const float rows_f = 0.0;
+layout(constant_id = 1) const float cols_f = 0.0;
+layout(constant_id = 2) const float k_f    = 0.0;
 
 void main() {
-    uint rows = uint(ROWS_F);
-    uint cols = uint(COLS_F);
-    int  k    = int(K_F);
+    uint rows = uint(rows_f);
+    uint cols = uint(cols_f);
+    int  k    = int(k_f);
 
     uint r = gl_GlobalInvocationID.y;
     uint c = gl_GlobalInvocationID.x;
