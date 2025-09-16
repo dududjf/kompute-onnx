@@ -46,6 +46,7 @@ class SqueezeOp:
             axes = [i for i, d in enumerate(input_shape) if d == 1]
 
         out_shape = list(input_shape)
+        axes = sorted(set(axes), reverse=True)
         for axis in axes:
             out_shape.pop(axis)
         tensor_out = input_tensors[0][0]
