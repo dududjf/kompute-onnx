@@ -85,7 +85,6 @@ void main() {
         seq.record(kp.OpTensorSyncLocal([tensor_out]))
         seq.eval()
 
-        print(tensor_out.data().dtype)
         output = tensor_out.data().reshape(output_shape).astype(np.int64)
 
         for tensor, _ in input_tensors:
@@ -99,7 +98,7 @@ void main() {
         rank = len(shape)
         axis = int(input_tensors[1][0].data().reshape(-1)[0]) if len(input_tensors) > 1 \
             else DEFAULT_AXIS
-        keepdims = int(input_tensors[2][0].data().reshape(-1)[0]) if len(input_tensors) > 2 \
+        keepdims = bool(input_tensors[2][0].data().reshape(-1)[0]) if len(input_tensors) > 2 \
             else DEFAULT_KEEPDIMS
         select_last_index = int(input_tensors[3][0].data().reshape(-1)[0]) if len(input_tensors) > 3 \
             else DEFAULT_SELECT_LAST_INDEX
