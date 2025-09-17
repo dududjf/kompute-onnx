@@ -25,9 +25,8 @@ void main()
     uint gy = gl_GlobalInvocationID.y;
     uint gz = gl_GlobalInvocationID.z;
 
-    uint y_data = uint(size_y_data);
     uint stride_y_data = uint(size_z_data);
-    uint stride_x_data = y_data * stride_y_data;
+    uint stride_x_data = uint(size_y_data) * stride_y_data;
     uint idx_data = gx * stride_x_data + gy * stride_y_data + gz;
 
     uint x_slope = uint(size_x_slope);
@@ -144,3 +143,4 @@ void main()
         ))
 
         return [(tensor_out, shape_data)]
+
