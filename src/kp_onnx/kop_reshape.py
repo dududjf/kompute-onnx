@@ -15,7 +15,7 @@ class ReshapeOp:
         return f"ReshapeOp({device_name})"
 
     def run(self, *inputs):
-        assert len(inputs) >= 2, "ReshapeOp requires at least data and target_shape"
+        assert len(inputs) == 2, "ReshapeOp requires two inputs data and target_shape"
         input_tensors = []
         numpy_in = inputs[0].reshape(-1).astype(np.float32) \
             if isinstance(inputs[0], np.ndarray) else np.array(inputs[0], dtype=np.float32)
@@ -37,7 +37,7 @@ class ReshapeOp:
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        assert len(input_tensors) >= 2, "ReshapeOp requires data and target_shape"
+        assert len(input_tensors) == 2, "ReshapeOp requires two inputs data and target_shape"
         target_shape_list = input_tensors[1][0].data().tolist()
         original_shape = input_tensors[0][1]
 
@@ -58,7 +58,7 @@ class ReshapeOp:
         if neg_idx != -1:
             new_shape[neg_idx] = total // known_prod
             assert new_shape[neg_idx] * known_prod == total, \
-                f"Reshape {new_shape} mismatches the total number of elements {total}"
+                f"Reshape {new_shape} does not match the total number of elements {total}"
 
         tensor_out = input_tensors[0][0]
         return [(tensor_out, new_shape)]

@@ -2,13 +2,12 @@ import numpy as np
 import kp
 from .shader_utils import compile_source
 
-DEFAULT_KEEPDIMS = True
-DEFAULT_NOOP_WITH_EMPTY_AXES = False
-
 
 class ReduceMeanOp:
 
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, keepdims=True, noop_with_empty_axes=False):
+        self.keepdims = keepdims
+        self.noop_with_empty_axes = noop_with_empty_axes
         self.manager = manager
         self.compiled_shader = compile_source("""
 #version 450
@@ -47,13 +46,11 @@ void main()
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            if inp is None:
-                tensor = None
-            else:
+            if inp is not None:
                 numpy_in = inp.reshape(-1).astype(np.float32) \
                     if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
                 tensor = self.manager.tensor(numpy_in)
-            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
+                input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else [len(inp)]))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -69,19 +66,15 @@ void main()
         output = tensor_out.data().reshape(output_shape)
 
         for tensor, _ in input_tensors:
-            if tensor is not None:
-                del tensor
+            del tensor
         del updated_tensors
         return [output]
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        axes = input_tensors[1][0].data().astype(int) if len(input_tensors) > 1 and input_tensors[1][0] else None
-        keepdims = int(input_tensors[2][0].data()) != 0 if len(input_tensors) > 2 else DEFAULT_KEEPDIMS
-        noop_with_empty_axes = int(input_tensors[3][0].data()) != 0 \
-            if len(input_tensors) > 3 else DEFAULT_NOOP_WITH_EMPTY_AXES
+        axes = input_tensors[1][0].data().astype(int) if len(input_tensors) > 1 else None
 
-        if noop_with_empty_axes and axes is None:
+        if self.noop_with_empty_axes and axes is None:
             return [input_tensors[0]]
 
         tensor_in = input_tensors[0][0]
@@ -115,7 +108,7 @@ void main()
             else:
                 block_size *= int(shape_in[i])
 
-        if keepdims:
+        if self.keepdims:
             shape_out = [1 if axis_present[i] else shape_in[i] for i in range(len(shape_in))]
         else:
             shape_out = [shape_in[i] for i in range(len(shape_in)) if not axis_present[i]]

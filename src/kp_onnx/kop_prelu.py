@@ -13,12 +13,11 @@ layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout (binding = 0) buffer buf_in_tensor_data  { float in_tensor_data[]; };
 layout (binding = 1) buffer buf_in_tensor_slope { float in_tensor_slope[]; };
 layout (binding = 2) buffer buf_out_tensor      { float out_tensor[]; };
-layout (constant_id = 0) const float size_x_data = 0;
-layout (constant_id = 1) const float size_y_data = 0;
-layout (constant_id = 2) const float size_z_data = 0;
-layout (constant_id = 3) const float size_x_slope = 0;
-layout (constant_id = 4) const float size_y_slope = 0;
-layout (constant_id = 5) const float size_z_slope = 0;
+layout (constant_id = 0) const float size_y_data = 0;
+layout (constant_id = 1) const float size_z_data = 0;
+layout (constant_id = 2) const float size_x_slope = 0;
+layout (constant_id = 3) const float size_y_slope = 0;
+layout (constant_id = 4) const float size_z_slope = 0;
 
 void main()
 {
@@ -140,7 +139,7 @@ void main()
             [tensor_data, new_slope, tensor_out],
             self.compiled_shader,
             workgroup,
-            [size_x_data, size_y_data, size_z_data, size_x_slope, size_y_slope, size_z_slope],
+            [size_y_data, size_z_data, size_x_slope, size_y_slope, size_z_slope],
             []
         ))
 

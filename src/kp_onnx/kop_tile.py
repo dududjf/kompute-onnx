@@ -39,18 +39,14 @@ void main()
         return self.__repr__()
 
     def run(self, *inputs):
-        assert len(inputs) == 2, "TileOp needs input tensor and repeats"
+        assert len(inputs) == 2, "TileOp needs two inputs tensor and repeats"
 
-        data_in = inputs[0].reshape(-1).astype(np.float32)
-        data_shape = list(inputs[0].shape)
-        tile_in = inputs[1].astype(np.int32) \
-            if isinstance(inputs[1], np.ndarray) else np.array(inputs[1], dtype=np.int32)
-        assert tile_in.size == len(data_shape), "TileOp: input tensor and repeats must have the same rank"
-        tile_in = tile_in.reshape(-1)
-        tile_shape = [tile_in.size]
-        data_tensor = self.manager.tensor(data_in)
-        tile_tensor = self.manager.tensor_t(tile_in, tensor_type=kp.TensorTypes.device)
-        input_tensors = [(data_tensor, data_shape), (tile_tensor, tile_shape)]
+        input_tensors = []
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32) \
+                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else [len(inp)]))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -72,11 +68,11 @@ void main()
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        assert len(input_tensors) >= 2, "TileOp needs input tensor and repeats"
+        assert len(input_tensors) == 2, "TileOp needs two inputs tensor and repeats"
 
         data_tensor = input_tensors[0][0]
         data_shape = input_tensors[0][1]
-        repeats = input_tensors[1][0].data()
+        repeats = input_tensors[1][0].data().astype(int)
 
         tensor_out = data_tensor
         block_size = 1
