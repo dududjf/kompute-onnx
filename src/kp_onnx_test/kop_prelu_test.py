@@ -95,14 +95,14 @@ print(f"{prelu_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 print('Case 6')
-numpy_in_1 = np.random.random((1023,)).astype(np.float32)
-numpy_in_2 = np.random.random((1,)).astype(np.float32)
+numpy_in = np.random.random((1023,)).astype(np.float32)
+slope_in = np.random.random((1,)).astype(np.float32)
 
 start_time = time.time()
-np_out = np_prelu(numpy_in_1, numpy_in_2)
+np_out = np_prelu(numpy_in, slope_in)
 print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = prelu_op.run(numpy_in_1, numpy_in_2)[0]
+kp_out = prelu_op.run(numpy_in, slope_in)[0]
 print(f"{prelu_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))

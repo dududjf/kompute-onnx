@@ -18,6 +18,7 @@ print(mgr.get_device_properties())
 reshape_op = ReshapeOp(mgr)
 
 # Case 1: 普通 reshape
+print("Case 1: 普通 reshape")
 numpy_in = np.random.random((2, 3, 4))
 shape = np.array([4, 6])
 
@@ -28,9 +29,10 @@ print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = reshape_op.run(numpy_in, shape)[0]
 print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 2: 含 -1 自动推导
+print("Case 2: 含 -1 自动推导")
 numpy_in = np.random.random((2, 3, 4))
 shape = np.array([-1, 4])
 
@@ -41,9 +43,10 @@ print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = reshape_op.run(numpy_in, shape)[0]
 print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 3: 含 0
+print("Case 3: 含 0")
 numpy_in = np.random.random((2, 3, 4))
 shape = np.array([0, 12])
 
@@ -54,9 +57,10 @@ print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = reshape_op.run(numpy_in, shape)[0]
 print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 4: 标量 tensor
+print("Case 4: 标量 tensor")
 numpy_in = np.array(42)
 shape = np.array([1])
 
@@ -67,9 +71,10 @@ print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = reshape_op.run(numpy_in, shape)[0]
 print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 5: 多维 reshape
+print("Case 5: 多维 reshape")
 numpy_in = np.random.random((2, 3, 4, 5))
 shape = np.array([4, 5, 6])
 
@@ -80,4 +85,4 @@ print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = reshape_op.run(numpy_in, shape)[0]
 print(f"{reshape_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4), "\n")
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
