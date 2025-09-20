@@ -37,7 +37,7 @@ class SqueezeOp:
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         input_shape = input_tensors[0][1]
         if len(input_tensors) > 1:
-            axes = input_tensors[1][0].data().reshape(-1).astype(np.int32).tolist()
+            axes = input_tensors[1][0].data().astype(np.int32).tolist()
             axes = [i if i >= 0 else i + len(input_shape) for i in axes]
             for axis in axes:
                 assert 0 <= axis < len(input_shape), f"Axis {axis} is out of bounds for array of dimension {len(input_shape)}）"
@@ -45,9 +45,6 @@ class SqueezeOp:
         else:
             axes = [i for i, d in enumerate(input_shape) if d == 1]
 
-        out_shape = list(input_shape)
-        axes = sorted(set(axes), reverse=True)
-        for axis in axes:
-            out_shape.pop(axis)
+        out_shape = [dim for idx, dim in enumerate(input_shape) if idx not in axes]
         tensor_out = input_tensors[0][0]
         return [(tensor_out, out_shape)]
