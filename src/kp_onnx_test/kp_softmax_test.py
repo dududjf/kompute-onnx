@@ -27,6 +27,7 @@ np_out = onnx_softmax(x, axis=DEFAULT_AXIS)
 print("NumPy:", np_out.shape, time.time() - t0, "seconds")
 
 t0 = time.time()
+softmax_op.axis = DEFAULT_AXIS
 kp_out = softmax_op.run(x)[0]
 print(f"{softmax_op}:", kp_out.shape, time.time() - t0, "seconds")
 
@@ -43,9 +44,9 @@ t0 = time.time()
 np_out = onnx_softmax(x, axis=0)
 print("NumPy:", np_out.shape, time.time() - t0, "seconds")
 
-# axis_tensor = np.array([0], dtype=np.float32)
 t0 = time.time()
-kp_out = softmax_op.run(x, 0)[0]   # axis=0
+softmax_op.axis = 0
+kp_out = softmax_op.run(x)[0]
 print(f"{softmax_op}:", kp_out.shape, time.time() - t0, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)
@@ -62,6 +63,7 @@ np_out = onnx_softmax(x, axis=DEFAULT_AXIS)
 print("NumPy:", np_out.shape, time.time() - t0, "seconds")
 
 t0 = time.time()
+softmax_op.axis = DEFAULT_AXIS
 kp_out = softmax_op.run(x)[0]
 print(f"{softmax_op}:", kp_out.shape, time.time() - t0, "seconds")
 
@@ -79,7 +81,8 @@ np_out = onnx_softmax(x, axis=0)
 print("NumPy:", np_out.shape, time.time() - t0, "seconds")
 
 t0 = time.time()
-kp_out = softmax_op.run(x, 0)[0]
+softmax_op.axis = 0
+kp_out = softmax_op.run(x)[0]
 print(f"{softmax_op}:", kp_out.shape, time.time() - t0, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)
@@ -96,7 +99,8 @@ np_out = onnx_softmax(x, axis=2)
 print("NumPy:", np_out.shape, time.time() - t0, "seconds")
 
 t0 = time.time()
-kp_out = softmax_op.run(x, 2)[0]
+softmax_op.axis = 2
+kp_out = softmax_op.run(x)[0]
 print(f"{softmax_op}:", kp_out.shape, time.time() - t0, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)
