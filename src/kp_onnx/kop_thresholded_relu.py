@@ -7,8 +7,8 @@ DEFAULT_ALPHA = 1
 
 class ThresholdedReluOp:
 
-    def __init__(self, manager: kp.Manager):
-        self.alpha = DEFAULT_ALPHA
+    def __init__(self, manager: kp.Manager, alpha=DEFAULT_ALPHA):
+        self.alpha = alpha
         self.manager = manager
         self.shader = compile_source("""
 #version 450
@@ -34,14 +34,10 @@ void main() {
 
     def run(self, *inputs):
         input_tensors = []
-        numpy_in = inputs[0].reshape(-1).astype(np.float32) \
-            if isinstance(inputs[0], np.ndarray) else np.array(inputs[0], dtype=np.float32)
-        tensor = self.manager.tensor(numpy_in)
-        input_tensors.append((tensor, list(inputs[0].shape) if isinstance(inputs[0], np.ndarray) else []))
-        if len(inputs) > 1:
-            numpy_in = np.array(inputs[1], dtype=np.float32).reshape(-1)
-            tensor = self.manager.tensor_t(numpy_in, kp.TensorTypes.device)
-            input_tensors.append((tensor, list(numpy_in.shape)))
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape)))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -64,7 +60,6 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, tensor_shape = input_tensors[0]
-        self.alpha = float(input_tensors[1][0].data()) if len(input_tensors) > 1 else self.alpha
         size = np.prod(tensor_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
         updated_tensors.append(tensor_out)

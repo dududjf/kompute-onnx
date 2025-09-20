@@ -34,7 +34,8 @@ numpy_out = np.where(numpy_in2 > alpha, numpy_in2, 0.0).astype(np.float32)
 print("NumPy (alpha=0.5):", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = thresholded_relu_op.run(numpy_in2, alpha)[0]
+thresholded_relu_op.alpha = alpha
+kp_out = thresholded_relu_op.run(numpy_in2)[0]
 print(f"{thresholded_relu_op} (alpha=0.5):", time.time() - start_time, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())
