@@ -2,17 +2,15 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
-# Selu 默认常量
 DEFAULT_ALPHA = float(1.6732631921768188)
 DEFAULT_GAMMA = float(1.0507009873554805)
 
 
 class SeluOp:
-    """
-    onnx::Selu 的 Kompute 实现（逐元素一元 | float32）
-    """
 
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, alpha=DEFAULT_ALPHA, gamma=DEFAULT_GAMMA):
+        self.alpha = alpha
+        self.gamma = gamma
         self.manager = manager
         self.shader = compile_source("""
 #version 450
@@ -42,8 +40,7 @@ void main() {
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            numpy_in = inp.reshape(-1).astype(np.float32) \
-                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            numpy_in = inp.reshape(-1).astype(np.float32)
             tensor = self.manager.tensor(numpy_in)
             input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
 
@@ -68,8 +65,6 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, tensor_shape = input_tensors[0]
-        alpha = float(input_tensors[1][0].data()) if len(input_tensors) > 1 else DEFAULT_ALPHA
-        gamma  = float(input_tensors[2][0].data()) if len(input_tensors) > 2 else DEFAULT_GAMMA
         size = np.prod(tensor_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
         updated_tensors.append(tensor_out)
@@ -79,7 +74,7 @@ void main() {
             [tensor_in, tensor_out],
             self.shader,
             workgroup,
-            [alpha, gamma],
+            [self.alpha, self.gamma],
             []
         ))
         return [(tensor_out, tensor_shape)]

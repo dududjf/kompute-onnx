@@ -35,7 +35,8 @@ numpy_out = DEFAULT_GAMMA * np.where(x2 >= 0.0, x2, alpha * (np.exp(x2) - 1.0))
 print("NumPy [alpha=0.8, gamma=default]:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = selu_op.run(x2, alpha)[0]
+selu_op.alpha = alpha
+kp_out = selu_op.run(x2)[0]
 print(f"{selu_op} [alpha=0.8, gamma=default]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
@@ -52,7 +53,9 @@ numpy_out = gamma * np.where(x3 >= 0.0, x3, alpha * (np.exp(x3) - 1.0))
 print("NumPy [alpha=1.2, gamma=0.9]:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = selu_op.run(x3, alpha, gamma)[0]
+selu_op.alpha = alpha
+selu_op.gamma = gamma
+kp_out = selu_op.run(x3)[0]
 print(f"{selu_op} [alpha=1.2, gamma=0.9]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
