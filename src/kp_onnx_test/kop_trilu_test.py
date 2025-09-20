@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_trilu import TriluOp, DEFAULT_UPPER, DEFAULT_K
+from kp_onnx.kop_trilu import TriluOp, DEFAULT_K, DEFAULT_UPPER
 
 device_id = 0
 mgr = Manager(device_id)
@@ -60,7 +60,8 @@ numpy_out = trilu_numpy(x, DEFAULT_K, upper)
 print("NumPy (lower):", time.time() - t0, "seconds")
 
 t1 = time.time()
-kp_out = trilu_op.run(x, DEFAULT_K, upper)[0]
+trilu_op.upper = upper
+kp_out = trilu_op.run(x)[0]
 print(f"{trilu_op} (lower):", time.time() - t1, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())
@@ -77,7 +78,8 @@ numpy_out = trilu_numpy(x, k, upper)
 print("NumPy (lower, k=-2):", time.time() - t0, "seconds")
 
 t1 = time.time()
-kp_out = trilu_op.run(x, k, upper)[0]
+trilu_op.upper = upper
+kp_out = trilu_op.run(x, k)[0]
 print(f"{trilu_op} (lower, k=-2):", time.time() - t1, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())
@@ -92,6 +94,7 @@ numpy_out = trilu_numpy(x, DEFAULT_K, DEFAULT_UPPER)
 print("NumPy （*,N,M）:", time.time() - t0, "seconds")
 
 t1 = time.time()
+trilu_op.upper = DEFAULT_UPPER
 kp_out = trilu_op.run(x)[0]
 print(f"{trilu_op} （*,N,M）:", time.time() - t1, "seconds")
 

@@ -2,15 +2,14 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
-DEFAULT_UPPER = 1  # onnx: 默认取上三角
-DEFAULT_K = 0      # onnx: 默认 k=0
+DEFAULT_K = 0
+DEFAULT_UPPER = 1
+
 
 class TriluOp:
-    """
-    onnx::Trilu 的 Kompute 实现（最后两维按三角掩码，其余批次维逐批处理 | float32）
-    """
 
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, upper=DEFAULT_UPPER):
+        self.upper = upper
         self.manager = manager
         self.shader = compile_source("""
 #version 450
@@ -88,13 +87,12 @@ void main() {
         N = in_shape[-2]
         M = in_shape[-1]
         k = input_tensors[1][0].data() if len(input_tensors) >= 2 else DEFAULT_K
-        upper = input_tensors[2][0].data() if len(input_tensors) >= 3 else DEFAULT_UPPER
         size = np.prod(in_shape)
 
         out_tensor = self.manager.tensor(np.zeros(size, dtype=np.float32))
         updated_tensors.append(out_tensor)
 
-        spec_consts = [N, M, k, upper, B]
+        spec_consts = [N, M, k, self.upper, B]
         workgroup = (M, N, B)
         updated_algorithms.append(
             self.manager.algorithm(
