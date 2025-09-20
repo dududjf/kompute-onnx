@@ -25,7 +25,7 @@ def onnx_eyelike(x: np.ndarray, k: int) -> np.ndarray:
 
 # Case 1: 1D 输入
 print("\nCase 1: 1D input")
-x = np.random.uniform(-5, 5, (10240,)).astype(np.float32)
+x = np.random.uniform(-5, 5, (1024,)).astype(np.float32)
 
 t0 = time.time()
 numpy_out = onnx_eyelike(x, DEFAULT_K)
@@ -41,7 +41,7 @@ print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 2: 2D 输入
 print("\nCase 2: 2D input")
-x = np.random.uniform(-5, 5, (10240, 20480)).astype(np.float32)
+x = np.random.uniform(-5, 5, (1024, 2048)).astype(np.float32)
 
 t0 = time.time()
 numpy_out = onnx_eyelike(x, DEFAULT_K)
@@ -57,7 +57,7 @@ print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 3: 1D 输入 k=2
 print("\nCase 3: 1D input k=2")
-x = np.random.uniform(-5, 5, (10240,)).astype(np.float32)
+x = np.random.uniform(-5, 5, (1024,)).astype(np.float32)
 
 k = 2
 t0 = time.time()
@@ -65,7 +65,8 @@ numpy_out = onnx_eyelike(x, k)
 print("NumPy:", numpy_out.shape, time.time() - t0, "seconds")
 
 t1 = time.time()
-kp_out = eyelike_op.run(x, k)[0]
+eyelike_op.k = k
+kp_out = eyelike_op.run(x)[0]
 print(f"{eyelike_op}:", kp_out.shape, time.time() - t1, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())
@@ -74,7 +75,7 @@ print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 4: 2D 输入 k=-1
 print("\nCase 4: 2D input k=-1")
-x = np.random.uniform(-5, 5, (10240, 20480)).astype(np.float32)
+x = np.random.uniform(-5, 5, (1024, 2048)).astype(np.float32)
 
 k = -1
 t0 = time.time()
@@ -82,7 +83,8 @@ numpy_out = onnx_eyelike(x, k)
 print("NumPy:", numpy_out.shape, time.time() - t0, "seconds")
 
 t1 = time.time()
-kp_out = eyelike_op.run(x, k)[0]
+eyelike_op.k = k
+kp_out = eyelike_op.run(x)[0]
 print(f"{eyelike_op}:", kp_out.shape, time.time() - t1, "seconds")
 
 print("Max error:", np.abs(numpy_out - kp_out).max())

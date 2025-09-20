@@ -7,20 +7,18 @@ DEFAULT_K = 0
 
 class EyeLikeOp:
 
-    def __init__(self, manager: kp.Manager):
-        self.k_val = DEFAULT_K
+    def __init__(self, manager: kp.Manager, k=DEFAULT_K):
+        self.k = k
         self.manager = manager
         self.shader = compile_source(r"""
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
 layout(binding = 0) writeonly buffer Out { float out_buf[]; };
 
-layout(constant_id = 0) const float rows_f = 0.0;
-layout(constant_id = 1) const float cols_f = 0.0;
-layout(constant_id = 2) const float k_f    = 0.0;
+layout(constant_id = 0) const float cols_f = 0.0;
+layout(constant_id = 1) const float k_f    = 0.0;
 
 void main() {
-    uint rows = uint(rows_f);
     uint cols = uint(cols_f);
     int  k    = int(k_f);
 
@@ -39,14 +37,10 @@ void main() {
 
     def run(self, *inputs):
         input_tensors = []
-        numpy_in = inputs[0].reshape(-1).astype(np.float32) \
-            if isinstance(inputs[0], np.ndarray) else np.array(inputs[0], dtype=np.float32)
-        tensor = self.manager.tensor(numpy_in)
-        input_tensors.append((tensor, list(inputs[0].shape) if isinstance(inputs[0], np.ndarray) else []))
-        if len(inputs) > 1:
-            numpy_in = np.array(inputs[1], dtype=np.int32).reshape(-1)
-            tensor = self.manager.tensor_t(numpy_in, kp.TensorTypes.device)
-            input_tensors.append((tensor, list(numpy_in.shape)))
+        for inp in inputs:
+            numpy_in = inp.reshape(-1).astype(np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape)))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -69,16 +63,13 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         shape_in = input_tensors[0][1]
-        if len(shape_in) == 1:
-            rows, cols = shape_in[0], shape_in[0]
-            out_shape = [rows, cols]
-        elif len(shape_in) == 2:
-            rows, cols = shape_in
-            out_shape = [rows, cols]
-        else:
-            raise AssertionError(f"EyeLike only accepts 1D or 2D input, got {shape_in}")
+        assert 1 <= len(shape_in) <= 2, f"EyeLike only accepts 1D or 2D input, got {shape_in}"
 
-        self.k_val = float(input_tensors[1][0].data()) if len(input_tensors) > 1 else self.k_val
+        if len(shape_in) == 1:
+            rows = cols = shape_in[0]
+        else:
+            rows, cols = shape_in
+        out_shape = [rows, cols]
 
         size = rows * cols
         shader = self.shader
@@ -90,7 +81,7 @@ void main() {
             [tensor_out],
             shader,
             workgroup,
-            [rows, cols, self.k_val],
+            [cols, self.k],
             []
         ))
 
