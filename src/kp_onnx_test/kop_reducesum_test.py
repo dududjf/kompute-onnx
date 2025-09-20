@@ -46,14 +46,16 @@ def np_sum(data, axes=None, keepdims=1, noop_with_empty_axes=0):
     return res
 
 
-# -------- Case 1: axis: None, keepdims: 1, noop_with_empty_axes: 0 --------
-print("Case 1: axis: None, keepdims: 1, noop_with_empty_axes: 0")
+# -------- Case 1 --------
+print("Case 1 for keepdims and not noop_with_empty_axes: axis is None")
 start_time = time.time()
-np_out = np_sum(x)
+np_out = np_sum(x, keepdims=True, noop_with_empty_axes=False)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = reduce_sum_op.run(x)[0]               # ← ReduceSum
+reduce_sum_op.keepdims = True
+reduce_sum_op.noop_with_empty_axes = False
+kp_out = reduce_sum_op.run(x)[0]
 print(f"{reduce_sum_op}: ", time.time() - start_time, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)
@@ -61,14 +63,16 @@ print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
-# -------- Case 2: axis: None, keepdims: 0, noop_with_empty_axes: 0 --------
-print("Case 2: axis: None, keepdims: 0, noop_with_empty_axes: 0")
+# -------- Case 2 --------
+print("Case 2 for not keepdims and not noop_with_empty_axes: axis is None")
 start_time = time.time()
-np_out = np_sum(x, keepdims=0)
+np_out = np_sum(x, keepdims=False, noop_with_empty_axes=False)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = reduce_sum_op.run(x, None, 0)[0]     # ← ReduceSum
+reduce_sum_op.keepdims = False
+reduce_sum_op.noop_with_empty_axes = False
+kp_out = reduce_sum_op.run(x)[0]
 print(f"{reduce_sum_op}: ", time.time() - start_time, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)
@@ -76,14 +80,16 @@ print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
-# -------- Case 3: axes: None, keepdims: 1, noop_with_empty_axes: 1 --------
-print("Case 3: axes: None, keepdims: 1, noop_with_empty_axes: 1")
+# -------- Case 3 --------
+print("Case 3 for keepdims and noop_with_empty_axes: axes is None")
 start_time = time.time()
-np_out = np_sum(x, None, keepdims=1, noop_with_empty_axes=1)
+np_out = np_sum(x, keepdims=True, noop_with_empty_axes=True)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = reduce_sum_op.run(x, None, 1, 1)[0]  # ← ReduceSum
+reduce_sum_op.keepdims = True
+reduce_sum_op.noop_with_empty_axes = True
+kp_out = reduce_sum_op.run(x, None)[0]
 print(f"{reduce_sum_op}:", time.time() - start_time, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)
@@ -91,14 +97,16 @@ print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
-# -------- Case 4: axes: None, keepdims: 0, noop_with_empty_axes: 1 --------
-print("Case 4: axes: None, keepdims: 0, noop_with_empty_axes: 1")
+# -------- Case 4 --------
+print("Case 4 for not keepdims and noop_with_empty_axes: axes is None")
 start_time = time.time()
-np_out = np_sum(x, None, keepdims=0, noop_with_empty_axes=1)
+np_out = np_sum(x, keepdims=False, noop_with_empty_axes=True)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = reduce_sum_op.run(x, None, 0, 1)[0]  # ← ReduceSum
+reduce_sum_op.keepdims = False
+reduce_sum_op.noop_with_empty_axes = True
+kp_out = reduce_sum_op.run(x, None)[0]
 print(f"{reduce_sum_op}:", time.time() - start_time, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)
@@ -106,15 +114,17 @@ print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
-# -------- Case 5: axes: [1,2], keepdims: 1, noop_with_empty_axes: 0 --------
-print("Case 5: axes: [1,2], keepdims: 1, noop_with_empty_axes: 0")
+# -------- Case 5 --------
+print("Case 5 for keepdims and not noop_with_empty_axes: axes is [0,2]")
 axes = np.array([1, 2], dtype=np.int32)
 start_time = time.time()
-np_out = np_sum(x, axes)
+np_out = np_sum(x, axes, keepdims=True, noop_with_empty_axes=False)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = reduce_sum_op.run(x, axes)[0]        # ← ReduceSum
+reduce_sum_op.keepdims = True
+reduce_sum_op.noop_with_empty_axes = False
+kp_out = reduce_sum_op.run(x, axes)[0]
 print(f"{reduce_sum_op}: ", time.time() - start_time, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)
@@ -122,15 +132,17 @@ print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
-# -------- Case 6: axes: (1), keepdims: 0, noop_with_empty_axes: 0 --------
-print("Case 6: axes: (1), keepdims: 0, noop_with_empty_axes: 0")
+# -------- Case 6 --------
+print("Case 6 for not keepdims and not noop_with_empty_axes: axes is (0)")
 axes = (1, )
 start_time = time.time()
-np_out = np_sum(x, axes, keepdims=0)
+np_out = np_sum(x, axes, keepdims=False, noop_with_empty_axes=False)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = reduce_sum_op.run(x, axes, 0)[0]     # ← ReduceSum
+reduce_sum_op.keepdims = False
+reduce_sum_op.noop_with_empty_axes = False
+kp_out = reduce_sum_op.run(x, axes)[0]
 print(f"{reduce_sum_op}: ", time.time() - start_time, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)
