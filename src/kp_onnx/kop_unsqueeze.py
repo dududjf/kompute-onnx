@@ -37,15 +37,14 @@ class UnsqueezeOp:
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         assert len(input_tensors) == 2, "UnsqueezeOp requires axes input"
         input_shape = input_tensors[0][1]
-        axes = input_tensors[1][0].data().reshape(-1).astype(np.int32).tolist()
+        axes = input_tensors[1][0].data().astype(np.int32).tolist()
 
         out_rank = len(input_shape) + len(axes)
         axes = sorted(a + out_rank if a < 0 else a for a in axes)
         assert all(0 <= a < out_rank for a in axes), \
             f"Axes {axes} out of range for output rank {out_rank}"
 
-        out_shape = list(input_shape)
-        for axis in axes:
-            out_shape.insert(axis, 1)
+        in_iter = iter(input_shape)
+        out_shape = [1 if i in axes else next(in_iter) for i in range(out_rank)]
         tensor_out = input_tensors[0][0]
         return [(tensor_out, out_shape)]

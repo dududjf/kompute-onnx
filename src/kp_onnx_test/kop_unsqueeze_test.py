@@ -35,7 +35,7 @@ def onnx_unsqueeze(data: np.ndarray, axes=None) -> np.ndarray:
 print("\nCase 1: 指定 axes=(1,3)")
 x = np.random.uniform(-1, 1, (2, 32, 16)).astype(np.float32)
 
-axes = (3, 1)
+axes = (1, 3)
 
 t0 = time.time()
 numpy_out = onnx_unsqueeze(x, axes)
