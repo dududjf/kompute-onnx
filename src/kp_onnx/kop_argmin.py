@@ -3,15 +3,14 @@ import numpy as np
 from .shader_utils import compile_source
 
 DEFAULT_AXIS = 0
-DEFAULT_KEEPDIMS = True # 是否保持维度
-DEFAULT_SELECT_LAST_INDEX = 0  # 0=第一个最小值, 1=最后一个最小值
+
 
 class ArgMinOp:
-    """
-    onnx::ArgMin 的 Kompute 实现（沿指定轴找到最小值的索引）
-    """
 
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, axis=DEFAULT_AXIS, keepdims=True, select_last_index=False):
+        self.axis = axis
+        self.keepdims = keepdims
+        self.select_last_index = select_last_index
         self.manager = manager
         self.shader = compile_source("""
 #version 450
@@ -69,23 +68,22 @@ void main() {
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            numpy_in = inp.reshape(-1).astype(np.float32) \
-                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            numpy_in = inp.reshape(-1).astype(np.float32)
             tensor = self.manager.tensor(numpy_in)
-            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
+            input_tensors.append((tensor, list(inp.shape)))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
         tensor_out, output_shape = output_tensor_and_shape[0]
 
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([input_tensors[0][0]]))
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
         for alg in updated_algorithms:
             seq.record(kp.OpAlgoDispatch(alg))
         seq.record(kp.OpTensorSyncLocal([tensor_out]))
         seq.eval()
 
-        output = tensor_out.data().reshape(output_shape).astype(np.int64)
+        output = tensor_out.data().reshape(output_shape)
 
         for tensor, _ in input_tensors:
             del tensor
@@ -96,15 +94,8 @@ void main() {
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, shape = input_tensors[0]
         rank = len(shape)
-        axis = int(input_tensors[1][0].data().reshape(-1)[0]) if len(input_tensors) > 1 \
-            else DEFAULT_AXIS
-        keepdims = bool(input_tensors[2][0].data().reshape(-1)[0]) if len(input_tensors) > 2 \
-            else DEFAULT_KEEPDIMS
-        select_last_index = int(input_tensors[3][0].data().reshape(-1)[0]) if len(input_tensors) > 3 \
-            else DEFAULT_SELECT_LAST_INDEX
 
-        if axis < 0:
-            axis = rank + axis
+        axis = self.axis if self.axis >= 0 else rank + self.axis
         assert 0 <= axis < rank, "axis out of range"
 
         axis_size = int(shape[axis])
@@ -112,7 +103,7 @@ void main() {
         stride_after  = int(np.prod(shape[axis+1:])) if axis < rank - 1 else 1
 
         out_shape = list(shape)
-        out_shape[axis:axis + 1] = [1] if keepdims else []
+        out_shape[axis:axis + 1] = [1] if self.keepdims else []
 
         output_size = stride_before * stride_after
         if output_size <= 0:
@@ -127,7 +118,7 @@ void main() {
                 [tensor_in, tensor_out],
                 shader,
                 workgroup,
-                [axis_size, stride_after, select_last_index],
+                [axis_size, stride_after, self.select_last_index],
                 []
             )
         )

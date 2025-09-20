@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_argmin import ArgMinOp, DEFAULT_AXIS, DEFAULT_KEEPDIMS
+from kp_onnx.kop_argmin import ArgMinOp, DEFAULT_AXIS
 
 
 def onnx_argmin(data, axis=0, keepdims=True, select_last_index=0):
@@ -39,6 +39,9 @@ numpy_out = onnx_argmin(numpy_in)
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
+argmin_op.axis = DEFAULT_AXIS
+argmin_op.keepdims = True
+argmin_op.select_last_index = False
 kp_out = argmin_op.run(numpy_in)[0]
 print(f"{argmin_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
@@ -53,6 +56,9 @@ numpy_out = onnx_argmin(numpy_in)
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
+argmin_op.axis = DEFAULT_AXIS
+argmin_op.keepdims = True
+argmin_op.select_last_index = False
 kp_out = argmin_op.run(numpy_in)[0]
 print(f"{argmin_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
@@ -67,7 +73,10 @@ numpy_out = onnx_argmin(numpy_in, axis=1)
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = argmin_op.run(numpy_in, 1)[0]
+argmin_op.axis = 1
+argmin_op.keepdims = True
+argmin_op.select_last_index = False
+kp_out = argmin_op.run(numpy_in)[0]
 print(f"{argmin_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
@@ -81,7 +90,10 @@ numpy_out = onnx_argmin(numpy_in, axis=2)
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = argmin_op.run(numpy_in, 2)[0]
+argmin_op.axis = 2
+argmin_op.keepdims = True
+argmin_op.select_last_index = False
+kp_out = argmin_op.run(numpy_in)[0]
 print(f"{argmin_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
@@ -95,7 +107,10 @@ numpy_out = onnx_argmin(numpy_in, axis=2, keepdims=False)
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = argmin_op.run(numpy_in, 2, False)[0]
+argmin_op.axis = 2
+argmin_op.keepdims = False
+argmin_op.select_last_index = False
+kp_out = argmin_op.run(numpy_in)[0]
 print(f"{argmin_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
@@ -109,7 +124,10 @@ numpy_out = onnx_argmin(numpy_in, axis=-2)
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = argmin_op.run(numpy_in, -2)[0]
+argmin_op.axis = -2
+argmin_op.keepdims = True
+argmin_op.select_last_index = False
+kp_out = argmin_op.run(numpy_in)[0]
 print(f"{argmin_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
@@ -123,7 +141,10 @@ numpy_out = onnx_argmin(numpy_in, select_last_index=1)[0]
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = argmin_op.run(numpy_in, DEFAULT_AXIS, DEFAULT_KEEPDIMS, 1)[0]
+argmin_op.axis = DEFAULT_AXIS
+argmin_op.keepdims = True
+argmin_op.select_last_index = True
+kp_out = argmin_op.run(numpy_in)[0]
 print(f"{argmin_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
