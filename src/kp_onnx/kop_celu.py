@@ -2,16 +2,13 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
-# Celu 默认常量
 DEFAULT_ALPHA = 1.0
 
 
 class CeluOp:
-    """
-    onnx::Celu 的 Kompute 实现（逐元素一元 | float32）
-    """
 
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, alpha=DEFAULT_ALPHA):
+        self.alpha = alpha
         self.manager = manager
         self.shader = compile_source("""
 #version 450
@@ -39,10 +36,9 @@ void main() {
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            numpy_in = inp.reshape(-1).astype(np.float32) \
-                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            numpy_in = inp.reshape(-1).astype(np.float32)
             tensor = self.manager.tensor(numpy_in)
-            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
+            input_tensors.append((tensor, list(inp.shape)))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -65,7 +61,6 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, tensor_shape = input_tensors[0]
-        alpha = float(input_tensors[1][0].data()) if len(input_tensors) > 1 else DEFAULT_ALPHA
         size = np.prod(tensor_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
         updated_tensors.append(tensor_out)
@@ -75,7 +70,7 @@ void main() {
             [tensor_in, tensor_out],
             self.shader,
             workgroup,
-            [alpha],
+            [self.alpha],
             []
         ))
         return [(tensor_out, tensor_shape)]

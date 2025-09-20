@@ -10,7 +10,7 @@ print(mgr.get_device_properties())
 celu_op = CeluOp(mgr)
 
 
-# Case 1: 单一输入参数
+# Case 1: 默认
 numpy_in1 = np.random.uniform(-5, 5, (640, 10240)).astype(np.float32)
 
 start_time = time.time()
@@ -34,7 +34,8 @@ numpy_out = np.where(numpy_in2 >= 0.0, numpy_in2, alpha * (np.exp(numpy_in2 / al
 print("NumPy (alpha=0.5):", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = celu_op.run(numpy_in2, alpha)[0]
+celu_op.alpha = alpha
+kp_out = celu_op.run(numpy_in2)[0]
 print(f"{celu_op} (alpha=0.5):", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
