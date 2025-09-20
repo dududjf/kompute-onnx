@@ -35,7 +35,8 @@ numpy_out = np.clip(alpha * x2 + DEFAULT_BETA, 0.0, 1.0)
 print("NumPy [alpha=0.35, beta=default]:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = hard_sigmoid_op.run(x2, alpha)[0]
+hard_sigmoid_op.alpha = alpha
+kp_out = hard_sigmoid_op.run(x2)[0]
 print(f"{hard_sigmoid_op} [alpha=0.35, beta=default]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())
@@ -52,7 +53,9 @@ numpy_out = np.clip(alpha * x3 + beta, 0.0, 1.0)
 print("NumPy [alpha=0.1, beta=0.6]:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = hard_sigmoid_op.run(x3, alpha, beta)[0]
+hard_sigmoid_op.alpha = alpha
+hard_sigmoid_op.beta  = beta
+kp_out = hard_sigmoid_op.run(x3)[0]
 print(f"{hard_sigmoid_op} [alpha=0.1, beta=0.6]:", time.time() - start_time, "seconds")
 
 print('Max error:', np.abs(numpy_out - kp_out).max())

@@ -2,17 +2,15 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
-# Hard_Sigmoid 默认常量
 DEFAULT_ALPHA = float(0.2)
 DEFAULT_BETA  = float(0.5)
 
 
 class HardSigmoidOp:
-    """
-    onnx::HardSigmoid 的 Kompute 实现（逐元素一元 | float32）
-    """
 
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, alpha=DEFAULT_ALPHA, beta=DEFAULT_BETA ):
+        self.alpha = alpha
+        self.beta  = beta
         self.manager = manager
         self.shader = compile_source("""
 #version 450
@@ -69,8 +67,6 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, tensor_shape = input_tensors[0]
-        alpha = float(input_tensors[1][0].data()) if len(input_tensors) > 1 else DEFAULT_ALPHA
-        beta  = float(input_tensors[2][0].data()) if len(input_tensors) > 2 else DEFAULT_BETA
         size = np.prod(tensor_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
         updated_tensors.append(tensor_out)
@@ -80,7 +76,7 @@ void main() {
             [tensor_in, tensor_out],
             self.shader,
             workgroup,
-            [alpha, beta],
+            [self.alpha, self.beta],
             []
         ))
         return [(tensor_out, tensor_shape)]
