@@ -112,13 +112,14 @@ numpy_out = onnx_mod(numpy_in_1, numpy_in_2)
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
+mod_op.fmod = False
 kp_out = mod_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{mod_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("kp_out.atype:", kp_out[0].dtype)
 
-print('Case 8: 输入A、B张量都是int32，fmod=1')
+print('Case 8: 输入A、B张量都是int32，fmod=True')
 numpy_in_1 = np.random.random((1023,)).astype(np.int32)
 numpy_in_2 = np.random.random((1,)).astype(np.int32)
 
@@ -127,7 +128,8 @@ numpy_out = onnx_mod(numpy_in_1, numpy_in_2, fmod=1)
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = mod_op.run(numpy_in_1, numpy_in_2, 1)[0]
+mod_op.fmod = True
+kp_out = mod_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{mod_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4, equal_nan=True))
 print("Max error:", np.abs(numpy_out - kp_out).max())
@@ -142,6 +144,7 @@ numpy_out = onnx_mod(numpy_in_1, numpy_in_2)
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
+mod_op.fmod = False
 kp_out = mod_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{mod_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4, equal_nan=True))
@@ -157,6 +160,7 @@ numpy_out = onnx_mod(numpy_in_1, numpy_in_2)
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
+mod_op.fmod = False
 kp_out = mod_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{mod_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
@@ -172,7 +176,8 @@ numpy_out = onnx_mod(numpy_in_1, numpy_in_2, fmod=1)
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = mod_op.run(numpy_in_1, numpy_in_2, 1)[0]
+mod_op.fmod = True
+kp_out = mod_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{mod_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 print("Max error:", np.abs(numpy_out - kp_out).max())
@@ -187,6 +192,7 @@ numpy_out = onnx_mod(numpy_in_1, numpy_in_2)
 print("Numpy:", numpy_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
+mod_op.fmod = False
 kp_out = mod_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{mod_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))

@@ -4,9 +4,10 @@ from .shader_utils import compile_source, broadcast_to
 
 
 class ModOp:
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, fmod=False):
+        self.fmod = fmod
         self.manager = manager
-        self.shader_trunc = compile_source(r'''
+        self.shader_trunc_f32 = compile_source(r'''
 #version 450
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout (binding = 0) buffer buf_in_tensor_1 { float in_tensor_1[]; };
@@ -54,7 +55,7 @@ void main() {
     out_tensor[gx * stride_x + gy * stride_y + gz] = r;
 }
 ''')
-        self.shader_trunc_int = compile_source(r'''
+        self.shader_trunc_i32 = compile_source(r'''
 #version 450
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout (binding = 0) buffer buf_in_tensor_1 { int in_tensor_1[]; };
@@ -107,20 +108,30 @@ void main() {
         return f"ModOp({device_name})"
 
     def run(self, *inputs):
-        assert len(inputs) in (2, 3), "ModOp requires 2 inputs (+ optional fmod flag)"
+        assert len(inputs) == 2, "ModOp requires 2 inputs"
 
         input_tensors = []
+        # for inp in inputs:
+        #     arr = np.asarray(inp)
+        #     if arr.dtype in (np.float16, np.float32, np.float64):
+        #         numpy_in = arr.reshape(-1).astype(np.float32)
+        #         tensor = self.manager.tensor(numpy_in)
+        #     elif arr.dtype in (np.int32, np.int64):
+        #         numpy_in = arr.reshape(-1).astype(np.int32)
+        #         tensor = self.manager.tensor_t(numpy_in, tensor_type=kp.TensorTypes.device)
+        #     else:
+        #         raise TypeError(f"Unsupported dtype {arr.dtype}. Only float32 and int32 supported.")
+        #     input_tensors.append((tensor, list(arr.shape)))
         for inp in inputs:
-            arr = np.asarray(inp)
-            if arr.dtype in (np.float16, np.float32, np.float64):
-                numpy_in = arr.reshape(-1).astype(np.float32)
+            if inp.dtype in (np.float16, np.float32, np.float64):
+                numpy_in = inp.reshape(-1).astype(np.float32)
                 tensor = self.manager.tensor(numpy_in)
-            elif arr.dtype in (np.int32, np.int64):
-                numpy_in = arr.reshape(-1).astype(np.int32)
+            elif inp.dtype in (np.int32, np.int64):
+                numpy_in = inp.reshape(-1).astype(np.int32)
                 tensor = self.manager.tensor_t(numpy_in, tensor_type=kp.TensorTypes.device)
             else:
-                raise TypeError(f"Unsupported dtype {arr.dtype}. Only float32 and int32 supported.")
-            input_tensors.append((tensor, list(arr.shape)))
+                raise TypeError(f"Unsupported dtype {inp.dtype}. Only float32 and int32 supported.")
+            input_tensors.append((tensor, list(inp.shape)))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -142,7 +153,7 @@ void main() {
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        assert len(input_tensors) in (2, 3), "ModOp requires 2 inputs (+ optional fmod flag)"
+        assert len(input_tensors) == 2, "ModOp requires 2 inputs"
 
         input_1 = input_tensors[0][0]
         input_2 = input_tensors[1][0]
@@ -208,11 +219,11 @@ void main() {
 
         size = np.prod(output_shape)
         if dtype_1 == np.int32 and dtype_2 == np.int32:
-            shader = self.shader_trunc_int
+            shader = self.shader_trunc_i32
             tensor_out = self.manager.tensor_t(np.zeros(size, dtype=np.int32), tensor_type=kp.TensorTypes.device)
             updated_tensors.append(tensor_out)
         else:
-            shader = self.shader_trunc
+            shader = self.shader_trunc_f32
             tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
             updated_tensors.append(tensor_out)
 
