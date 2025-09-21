@@ -2,9 +2,6 @@ import numpy as np
 import kp
 from .shader_utils import compile_source
 
-DEFAULT_KEEPDIMS = True
-DEFAULT_NOOP_WITH_EMPTY_AXES = False
-
 
 class ReduceMinOp:
     def __init__(self, manager: kp.Manager, keepdims=True, noop_with_empty_axes=False):
@@ -79,9 +76,6 @@ void main()
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         axes = input_tensors[1][0].data().astype(int) if len(input_tensors) > 1 and input_tensors[1][0] else None
-        # keepdims = int(input_tensors[2][0].data()) != 0 if len(input_tensors) > 2 else DEFAULT_KEEPDIMS
-        # noop_with_empty_axes = int(input_tensors[3][0].data()) != 0 \
-        #     if len(input_tensors) > 3 else DEFAULT_NOOP_WITH_EMPTY_AXES
 
         if self.noop_with_empty_axes and axes is None:
             return [input_tensors[0]]
