@@ -25,10 +25,11 @@ print("Case 1: 3D Tensor, ratio: None, traning_mode: None, seed: None")
 x = np.random.random((32, 512, 1024)).astype(np.float32)
 
 start_time = time.time()
-np_out = dropout_numpy(x)
+np_out = dropout_numpy(x, seed=None)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
+dropout_op.seed = None
 kp_out = dropout_op.run(x)[0]
 print(f"{dropout_op}: ", time.time() - start_time, "seconds")
 
@@ -42,10 +43,11 @@ x = np.random.random((32, 512, 2048)).astype(np.float32)
 ratio = 0.3
 
 start_time = time.time()
-np_out = dropout_numpy(x, ratio=ratio, training_mode=True)
+np_out = dropout_numpy(x, ratio=ratio, training_mode=True, seed=None)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
+dropout_op.seed = None
 kp_out = dropout_op.run(x, ratio, True)[0]
 print(f"{dropout_op}: ", time.time() - start_time, "seconds")
 
@@ -64,7 +66,8 @@ np_out = dropout_numpy(x, ratio=ratio, training_mode=True, seed=seed)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = dropout_op.run(x, ratio, True, seed)
+dropout_op.seed = seed
+kp_out = dropout_op.run(x, ratio, True)
 print(f"{dropout_op}: ", time.time() - start_time, "seconds")
 
 print("Max error:", np.abs(np_out - kp_out).max())
@@ -76,10 +79,11 @@ print("Case 4: 1D Tensor, ratio: 0, traning_mode: True, seed: None")
 x = np.random.random((2048,)).astype(np.float32)
 
 start_time = time.time()
-np_out = dropout_numpy(x, ratio=0.0, training_mode=True)
+np_out = dropout_numpy(x, ratio=0.0, training_mode=True, seed=None)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
+dropout_op.seed = None
 kp_out = dropout_op.run(x, 0.0, True)[0]
 print(f"{dropout_op} (ratio=0): ", time.time() - start_time, "seconds")
 print("Max error:", np.abs(np_out - kp_out).max())

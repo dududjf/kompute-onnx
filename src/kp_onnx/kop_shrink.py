@@ -2,13 +2,12 @@ import numpy as np
 import kp
 from .shader_utils import compile_source
 
-DEFAULT_BIAS = float(0.0)
-DEFAULT_LAMBDA = float(0.5)
-
 
 class ShrinkOp:
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, bias=0.0, lambd=0.5):
         self.manager = manager
+        self.bias = bias
+        self.lambd = lambd
         self.shader = compile_source("""
 #version 450
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -36,8 +35,7 @@ void main() {
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            numpy_in = inp.reshape(-1).astype(np.float32) \
-                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            numpy_in = inp.reshape(-1).astype(np.float32)
             tensor = self.manager.tensor(numpy_in)
             input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
 
@@ -66,12 +64,7 @@ void main() {
         size = np.prod(tensor_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
 
-        bias_val = float(input_tensors[1][0].data()) \
-            if len(input_tensors) >= 2 and input_tensors[1][0] is not None else DEFAULT_BIAS
-        lam_val = float(input_tensors[2][0].data()) \
-            if len(input_tensors) >= 3 and input_tensors[2][0] is not None else DEFAULT_LAMBDA
-
         updated_tensors.append(tensor_out)
         updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out],
-                                                         self.shader, spec_consts=[bias_val, lam_val]))
+                                                         self.shader, spec_consts=[self.bias, self.lambd]))
         return [(tensor_out, tensor_shape)]

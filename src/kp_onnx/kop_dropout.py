@@ -4,12 +4,12 @@ from .shader_utils import compile_source
 
 DEFAULT_RATIO = 0.5
 DEFAULT_TRAINING_MODE = False
-DEFAULT_SEED = None
 
 
 class DropoutOp:
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, seed=None):
         self.manager = manager
+        self.seed = seed
         self.shader = compile_source(r"""
 #version 450
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -63,12 +63,11 @@ void main() {
 
         ratio = float(input_tensors[1][0].data()) if len(input_tensors) >= 2 else DEFAULT_RATIO
         training_mode = bool(input_tensors[2][0].data()) if len(input_tensors) >= 3 else DEFAULT_TRAINING_MODE
-        seed = int(input_tensors[3][0].data()) if len(input_tensors) >= 4 else DEFAULT_SEED
 
         if not training_mode or ratio == 0.0:
             return [(tensor_in, in_shape)]
 
-        rnd = np.random.RandomState(None if seed is None else int(seed))
+        rnd = np.random.RandomState(None if self.seed is None else int(self.seed))
         keep_prob = 1.0 - float(ratio)
         mask_bool = rnd.uniform(0.0, 1.0, in_shape) < keep_prob
         scale = 1.0 / (1.0 - ratio)

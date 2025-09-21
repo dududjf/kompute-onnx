@@ -22,14 +22,16 @@ log_softmax_op = LogSoftmaxOp(mgr)
 # Case 1: 3D tensor, axis: None
 print("Case 1: 3D Tensor (32, 64, 256), axis: None")
 x = np.random.uniform(-10.0, 10.0, (32, 64, 256)).astype(np.float32)
+axis = -1
 
 # NumPy baseline
 start_time = time.time()
-np_out = numpy_log_softmax(x)
+np_out = numpy_log_softmax(x, axis=axis)
 print(f"Numpy time: {time.time() - start_time} seconds")
 
 # Kompute implementation
 start_time = time.time()
+log_softmax_op.axis = -1
 kp_out = log_softmax_op.run(x)[0]
 print(f"{log_softmax_op} time: {time.time() - start_time} seconds")
 
@@ -50,7 +52,8 @@ print(f"Numpy time: {time.time() - start_time} seconds")
 
 # Kompute implementation
 start_time = time.time()
-kp_out = log_softmax_op.run(x, axis)[0]
+log_softmax_op.axis = 1
+kp_out = log_softmax_op.run(x)[0]
 print(f"{log_softmax_op} time: {time.time() - start_time} seconds")
 
 # Validation
@@ -70,7 +73,8 @@ print(f"Numpy time: {time.time() - start_time} seconds")
 
 # Kompute implementation
 start_time = time.time()
-kp_out = log_softmax_op.run(x, axis)[0]
+log_softmax_op.axis = -2
+kp_out = log_softmax_op.run(x)[0]
 print(f"{log_softmax_op} time: {time.time() - start_time} seconds")
 
 # Validation
@@ -90,7 +94,8 @@ print(f"Numpy time: {time.time() - start_time} seconds")
 
 # Kompute implementation
 start_time = time.time()
-kp_out = log_softmax_op.run(x, axis)[0]
+log_softmax_op.axis = 0
+kp_out = log_softmax_op.run(x)[0]
 print(f"{log_softmax_op} time: {time.time() - start_time} seconds")
 
 # Validation

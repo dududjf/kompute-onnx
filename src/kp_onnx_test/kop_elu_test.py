@@ -21,6 +21,7 @@ print("Numpy: ", time.time() - start_time, "seconds")
 
 # Kompute
 start_time = time.time()
+elu_op.alpha = 1.0
 kp_out = elu_op.run(x)[0]
 print(f"{elu_op}: ", time.time() - start_time, "seconds")
 
@@ -41,7 +42,8 @@ print("Numpy: ", time.time() - start_time, "seconds")
 
 # Kompute
 start_time = time.time()
-kp_out = elu_op.run(x, alpha)[0]
+elu_op.alpha = alpha
+kp_out = elu_op.run(x)[0]
 print(f"{elu_op}: ", time.time() - start_time, "seconds")
 
 print("Max error:", np.abs(np_out - kp_out).max())

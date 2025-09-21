@@ -2,12 +2,11 @@ import numpy as np
 import kp
 from .shader_utils import compile_source
 
-DEFAULT_AXIS = -1
-
 
 class LogSoftmaxOp:
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, axis=-1):
         self.manager = manager
+        self.axis = axis
         self.shader = compile_source("""
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -56,8 +55,7 @@ void main() {
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            numpy_in = inp.reshape(-1).astype(np.float32) \
-                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            numpy_in = inp.reshape(-1).astype(np.float32)
             tensor = self.manager.tensor(numpy_in)
             input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
 
@@ -82,14 +80,13 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, shape_in = input_tensors[0]
-        axis = int(input_tensors[1][0].data()) if len(input_tensors) > 1 else DEFAULT_AXIS
 
-        axis += len(shape_in) if axis < 0 else 0
+        self.axis += len(shape_in) if self.axis < 0 else 0
 
-        axis_size = shape_in[axis]
+        axis_size = shape_in[self.axis]
 
-        group_x = int(np.prod(shape_in[:axis])) if axis >= 0 else 1
-        block_size = int(np.prod(shape_in[axis + 1:])) if axis + 1 < len(shape_in) else 1
+        group_x = int(np.prod(shape_in[:self.axis])) if self.axis >= 0 else 1
+        block_size = int(np.prod(shape_in[self.axis + 1:])) if self.axis + 1 < len(shape_in) else 1
         total_size = int(np.prod(shape_in))
 
         tensor_out = self.manager.tensor(np.zeros(total_size, dtype=np.float32))

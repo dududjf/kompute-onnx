@@ -20,12 +20,14 @@ hardmax_op = HardmaxOp(mgr)
 # Case 1
 print("Case 1: 3D (32, 64, 512), axis=None")
 x = np.random.uniform(-5, 5, (32, 64, 512)).astype(np.float32)
+axis = -1
 
 start_time = time.time()
-np_out = numpy_hardmax(x)
+np_out = numpy_hardmax(x, axis=axis)
 print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
+hardmax_op.axis = axis
 kp_out = hardmax_op.run(x)[0]
 print(f"{hardmax_op}: ", time.time() - start_time, "seconds")
 
@@ -43,7 +45,8 @@ np_out = numpy_hardmax(x, axis=axis)
 print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = hardmax_op.run(x, axis)[0]
+hardmax_op.axis = axis
+kp_out = hardmax_op.run(x)[0]
 
 print(f"{hardmax_op}: ", time.time() - start_time, "seconds")
 print("Max error:", np.abs(np_out - kp_out).max())
@@ -60,9 +63,10 @@ np_out = numpy_hardmax(x, axis=axis)
 print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = hardmax_op.run(x, axis)[0]
-
+hardmax_op.axis = axis
+kp_out = hardmax_op.run(x)[0]
 print(f"{hardmax_op}: ", time.time() - start_time, "seconds")
+
 print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print('----')
@@ -77,7 +81,8 @@ np_out = numpy_hardmax(x, axis)
 print("Numpy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = hardmax_op.run(x, axis)[0]
+hardmax_op.axis = axis
+kp_out = hardmax_op.run(x)[0]
 
 print(f"{hardmax_op}: ", time.time() - start_time, "seconds")
 print("Max error:", np.abs(np_out - kp_out).max())

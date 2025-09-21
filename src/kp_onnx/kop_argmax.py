@@ -2,14 +2,13 @@ import numpy as np
 import kp
 from .shader_utils import compile_source
 
-DEFAULT_AXIS = 0
-DEFAULT_KEEP_DIMS = True
-DEFAULT_SELECT_LAST_INDEX = 0
-
 
 class ArgMaxOp:
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, axis=0, keepdims=True, select_last_index=False):
         self.manager = manager
+        self.axis = axis
+        self.keepdims = keepdims
+        self.select_last_index = select_last_index
         self.shader = compile_source("""
 #version 450
 layout(local_size_x = 1, local_size_y = 1) in;
@@ -56,8 +55,7 @@ void main() {
 """)
 
     def __repr__(self):
-        device_name = self.manager.get_device_properties()['device_name']
-        return f"ArgMaxOp({device_name})"
+        return f"ArgMaxOp({self.manager.get_device_properties()['device_name']})"
 
     def __str__(self):
         return self.__repr__()
@@ -92,22 +90,18 @@ void main() {
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, shape_in = input_tensors[0]
 
-        axis = int(input_tensors[1][0].data()) if len(input_tensors) >= 2 else DEFAULT_AXIS
-        keepdims = int(input_tensors[2][0].data()) != 0 if len(input_tensors) >= 3 else DEFAULT_KEEP_DIMS
-        select_last_index = int(input_tensors[3][0].data()) if len(input_tensors) >= 4 else DEFAULT_SELECT_LAST_INDEX
+        self.axis += len(shape_in) if self.axis < 0 else 0
 
-        axis += len(shape_in) if axis < 0 else 0
-
-        axis_size = shape_in[axis]
-        batch_size = int(np.prod(shape_in[:axis])) if axis >= 0 else 1
-        block_size = int(np.prod(shape_in[axis + 1:])) if axis + 1 < len(shape_in) else 1
+        axis_size = shape_in[self.axis]
+        batch_size = int(np.prod(shape_in[:self.axis])) if self.axis >= 0 else 1
+        block_size = int(np.prod(shape_in[self.axis + 1:])) if self.axis + 1 < len(shape_in) else 1
 
         tensor_out = self.manager.tensor_t(np.zeros(np.prod(batch_size * block_size), dtype=np.int32))
         updated_tensors.append(tensor_out)
 
         workgroup = (batch_size, block_size, 1)
 
-        spec_consts = [axis_size, block_size, select_last_index]
+        spec_consts = [axis_size, block_size, self.select_last_index]
         updated_algorithms.append(self.manager.algorithm(
             [tensor_in, tensor_out],
             self.shader,
@@ -117,6 +111,6 @@ void main() {
         ))
 
         output_shape = list(shape_in)
-        output_shape[axis:axis + 1] = [1] if keepdims else []
+        output_shape[self.axis:self.axis + 1] = [1] if self.keepdims else []
 
         return [(tensor_out, output_shape)]

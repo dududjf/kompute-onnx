@@ -12,12 +12,14 @@ leaky_relu_op = LeakyReluOp(mgr)
 # ---------------- Case 1: alpha: None ----------------
 print("Case 1: LeakyReLU alpha: None")
 x = np.random.random((1024, 1024)).astype(np.float32)
+alpha = 0.01
 
 start_time = time.time()
-np_out = np.where(x >= 0.0, x, 0.01 * x)
+np_out = np.where(x >= 0.0, x, alpha * x)
 print("Numpy: ", time.time() - start_time, "seconds")
 
 start_time = time.time()
+leaky_relu_op.alpha = alpha
 kp_out = leaky_relu_op.run(x)[0]
 print(f"{leaky_relu_op}: ", time.time() - start_time, "seconds")
 
@@ -35,7 +37,8 @@ np_out = np.where(x >= 0.0, x, alpha * x)
 print("Numpy: ", time.time() - start_time, "seconds")
 
 start_time = time.time()
-kp_out = leaky_relu_op.run(x, alpha)[0]
+leaky_relu_op.alpha = alpha
+kp_out = leaky_relu_op.run(x)[0]
 print(f"{leaky_relu_op}: ", time.time() - start_time, "seconds")
 
 print("shape equal:", kp_out.shape == np_out.shape)

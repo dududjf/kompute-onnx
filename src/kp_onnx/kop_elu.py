@@ -2,12 +2,11 @@ import numpy as np
 import kp
 from .shader_utils import compile_source
 
-DEFAULT_ALPHA = float(1.0)
-
 
 class EluOp:
-    def __init__(self, manager: kp.Manager):
+    def __init__(self, manager: kp.Manager, alpha=1.0):
         self.manager = manager
+        self.alpha = alpha
         self.shader = compile_source("""
 #version 450
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -36,10 +35,9 @@ void main() {
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            numpy_in = inp.reshape(-1).astype(np.float32) \
-                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            numpy_in = inp.reshape(-1).astype(np.float32)
             tensor = self.manager.tensor(numpy_in)
-            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
+            input_tensors.append((tensor, list(inp.shape)))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -65,8 +63,6 @@ void main() {
         tensor_shape = input_tensors[0][1]
         size = np.prod(tensor_shape)
         tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
-        alpha = float(input_tensors[1][0].data())\
-            if len(input_tensors) >= 2 and input_tensors[1][0] is not None else DEFAULT_ALPHA
         updated_tensors.append(tensor_out)
-        updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], self.shader, spec_consts=[alpha]))
+        updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out], self.shader, spec_consts=[self.alpha]))
         return [(tensor_out, tensor_shape)]
