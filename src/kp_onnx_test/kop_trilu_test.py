@@ -1,13 +1,16 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_trilu import TriluOp, DEFAULT_K, DEFAULT_UPPER
+from kp_onnx.kop_trilu import TriluOp, DEFAULT_K
+
+DEFAULT_UPPER = 1
 
 device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
 trilu_op = TriluOp(mgr)
+
 
 def trilu_numpy(x: np.ndarray, k: int, upper: int) -> np.ndarray:
     """
@@ -19,7 +22,8 @@ def trilu_numpy(x: np.ndarray, k: int, upper: int) -> np.ndarray:
     else:
         return np.tril(x, k).astype(x.dtype, copy=False)
 
-# Case 1: 默认
+
+# Case 1: 默认（默认k=0，UPPER=1上三角）
 print("\nCase 1: default (upper=DEFAULT_UPPER, k=DEFAULT_K)")
 x = np.random.uniform(-5, 5, (640, 10240)).astype(np.float32)  # 最后两维视作矩阵(640 x 10240)
 

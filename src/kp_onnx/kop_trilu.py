@@ -3,12 +3,11 @@ import numpy as np
 from .shader_utils import compile_source
 
 DEFAULT_K = 0
-DEFAULT_UPPER = 1
 
 
 class TriluOp:
 
-    def __init__(self, manager: kp.Manager, upper=DEFAULT_UPPER):
+    def __init__(self, manager: kp.Manager, upper=1):
         self.upper = upper
         self.manager = manager
         self.shader = compile_source("""
@@ -18,16 +17,16 @@ layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout (set = 0, binding = 0) readonly  buffer InBuf  { float in_buf[];  };
 layout (set = 0, binding = 1) writeonly buffer OutBuf { float out_buf[]; };
 
-layout (constant_id = 0) const float N_f = 0.0;   // 行
-layout (constant_id = 1) const float M_f = 0.0;   // 列
-layout (constant_id = 2) const float K_f = 0.0;   // 偏移 k
-layout (constant_id = 3) const float U_f = 1.0;   // 1=upper, 0=lower
-layout (constant_id = 4) const float B_f = 1.0;   // 批次矩阵数 = ∏batch_dims
+layout (constant_id = 0) const float N_f = 0.0;
+layout (constant_id = 1) const float M_f = 0.0;
+layout (constant_id = 2) const float K_f = 0.0;
+layout (constant_id = 3) const float U_f = 1.0;
+layout (constant_id = 4) const float B_f = 1.0;
 
 void main() {
-    uint j = gl_GlobalInvocationID.x; // 列
-    uint i = gl_GlobalInvocationID.y; // 行
-    uint b = gl_GlobalInvocationID.z; // 第 b 个矩阵
+    uint j = gl_GlobalInvocationID.x;
+    uint i = gl_GlobalInvocationID.y;
+    uint b = gl_GlobalInvocationID.z;
 
     uint N = uint(N_f);
     uint M = uint(M_f);
@@ -35,11 +34,9 @@ void main() {
     bool upper = (U_f > 0.5);
     uint B = uint(B_f);
 
-    // 线性地址：b 块 + 行内偏移 + 列
     uint block = N * M;
     uint idx   = b * block + i * M + j;
 
-    // 掩码判断：上三角(j - i >= k) / 下三角(i - j >= -k)
     bool keep  = upper ? (int(j) - int(i) >= k)
                        : (int(i) - int(j) >= -k);
 
