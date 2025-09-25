@@ -1,8 +1,10 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_hard_sigmoid import HardSigmoidOp, DEFAULT_ALPHA, DEFAULT_BETA
+from kp_onnx.kop_hard_sigmoid import HardSigmoidOp
 
+DEFAULT_ALPHA = float(0.2)
+DEFAULT_BETA  = float(0.5)
 
 device_id = 0
 mgr = Manager(device_id)
@@ -11,7 +13,7 @@ print(mgr.get_device_properties())
 hard_sigmoid_op = HardSigmoidOp(mgr)
 
 
-# Case 1: 单一输入参数，不指定alpha、beta
+# Case 1: 单一输入参数(默认alpha = 0.2、beta = 0.5)
 x1 = np.random.uniform(-8, 8, (10240, 40960)).astype(np.float32)
 
 start_time = time.time()

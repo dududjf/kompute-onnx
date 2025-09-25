@@ -2,13 +2,10 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
-DEFAULT_ALPHA = float(0.2)
-DEFAULT_BETA  = float(0.5)
-
 
 class HardSigmoidOp:
 
-    def __init__(self, manager: kp.Manager, alpha=DEFAULT_ALPHA, beta=DEFAULT_BETA ):
+    def __init__(self, manager: kp.Manager, alpha=float(0.2), beta=float(0.5)):
         self.alpha = alpha
         self.beta  = beta
         self.manager = manager
