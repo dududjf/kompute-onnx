@@ -2,12 +2,10 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
-DEFAULT_K = 0
-
 
 class EyeLikeOp:
 
-    def __init__(self, manager: kp.Manager, k=DEFAULT_K):
+    def __init__(self, manager: kp.Manager, k=0):
         self.k = k
         self.manager = manager
         self.shader = compile_source(r"""

@@ -1,8 +1,9 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_eyelike import EyeLikeOp, DEFAULT_K
+from kp_onnx.kop_eyelike import EyeLikeOp
 
+DEFAULT_K = 0
 
 device_id = 0
 mgr = Manager(device_id)
@@ -23,7 +24,7 @@ def onnx_eyelike(x: np.ndarray, k: int) -> np.ndarray:
         raise ValueError(f"EyeLike only supports 1D or 2D input, got {shape}")
 
 
-# Case 1: 1D 输入
+# Case 1: 1D 输入 默认k=0
 print("\nCase 1: 1D input")
 x = np.random.uniform(-5, 5, (1024,)).astype(np.float32)
 
@@ -39,7 +40,7 @@ print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 
-# Case 2: 2D 输入
+# Case 2: 2D 输入 默认k=0
 print("\nCase 2: 2D input")
 x = np.random.uniform(-5, 5, (1024, 2048)).astype(np.float32)
 
@@ -55,7 +56,7 @@ print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 
-# Case 3: 1D 输入 k=2
+# Case 3: 1D 输入 指定k=2
 print("\nCase 3: 1D input k=2")
 x = np.random.uniform(-5, 5, (1024,)).astype(np.float32)
 
@@ -73,7 +74,7 @@ print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 
-# Case 4: 2D 输入 k=-1
+# Case 4: 2D 输入 指定k=-1
 print("\nCase 4: 2D input k=-1")
 x = np.random.uniform(-5, 5, (1024, 2048)).astype(np.float32)
 
