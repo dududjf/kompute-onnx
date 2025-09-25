@@ -2,13 +2,10 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
-DEFAULT_ALPHA = float(1.6732631921768188)
-DEFAULT_GAMMA = float(1.0507009873554805)
-
 
 class SeluOp:
 
-    def __init__(self, manager: kp.Manager, alpha=DEFAULT_ALPHA, gamma=DEFAULT_GAMMA):
+    def __init__(self, manager: kp.Manager, alpha=float(1.6732631921768188), gamma=float(1.0507009873554805)):
         self.alpha = alpha
         self.gamma = gamma
         self.manager = manager

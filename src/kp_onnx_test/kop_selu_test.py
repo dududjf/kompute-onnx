@@ -1,8 +1,10 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_selu import SeluOp, DEFAULT_ALPHA, DEFAULT_GAMMA
+from kp_onnx.kop_selu import SeluOp
 
+DEFAULT_ALPHA = float(1.6732632423543772)
+DEFAULT_GAMMA = float(1.0507009873554805)
 
 device_id = 0
 mgr = Manager(device_id)
@@ -11,7 +13,7 @@ print(mgr.get_device_properties())
 selu_op = SeluOp(mgr)
 
 
-# Case 1: 单一输入参数，不指定alpha、gamma
+# Case 1: 单一输入参数（默认alpha=1.6732632423543772、gamma=1.0507009873554805）
 x1 = np.random.uniform(-5, 5, (10240, 40960)).astype(np.float32)
 
 start_time = time.time()
