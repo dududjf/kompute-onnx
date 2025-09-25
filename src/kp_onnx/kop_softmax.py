@@ -2,11 +2,9 @@ import numpy as np
 import kp
 from .shader_utils import compile_source
 
-DEFAULT_AXIS = -1
-
 
 class SoftmaxOp:
-    def __init__(self, manager: kp.Manager, axis=DEFAULT_AXIS):
+    def __init__(self, manager: kp.Manager, axis=-1):
         self.axis = axis
         self.manager = manager
         self.shader = compile_source("""

@@ -1,15 +1,16 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_softmax import SoftmaxOp, DEFAULT_AXIS
+from kp_onnx.kop_softmax import SoftmaxOp
 
 
-def onnx_softmax(X: np.ndarray, axis: int = 1) -> np.ndarray:
+def onnx_softmax(X: np.ndarray, axis: int = -1) -> np.ndarray:
     tmp = X - X.max(axis=axis, keepdims=True)
     Y = np.exp(tmp)
     Y /= Y.sum(axis=axis, keepdims=True)
     return Y.astype(X.dtype, copy=False)
 
+DEFAULT_AXIS = -1
 
 device_id = 0
 mgr = Manager(device_id)
@@ -18,7 +19,7 @@ print(mgr.get_device_properties())
 softmax_op = SoftmaxOp(mgr)
 
 
-# Case 1: 2D 默认
+# Case 1: 2D 默认（默认axis=-1）
 print("Case 1: 2D, default axis")
 x = np.random.uniform(-3, 3, (1024, 4096)).astype(np.float32)
 
