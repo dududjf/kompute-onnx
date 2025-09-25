@@ -37,7 +37,7 @@ void main()
 """)
 
     def __repr__(self):
-        return f"ReduceMeanOp({self.manager.get_device_properties()['device_name']})"
+        return f"ReduceSumOp({self.manager.get_device_properties()['device_name']})"
 
     __str__ = __repr__
 
@@ -54,12 +54,13 @@ void main()
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
         tensor_out, output_shape = output_tensor_and_shape[0]
 
-        seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([input_tensors[0][0]]))
-        for alg in updated_algorithms:
-            seq.record(kp.OpAlgoDispatch(alg))
-        seq.record(kp.OpTensorSyncLocal([tensor_out]))
-        seq.eval()
+        if updated_algorithms:
+            seq = self.manager.sequence()
+            seq.record(kp.OpTensorSyncDevice([input_tensors[0][0]]))
+            for alg in updated_algorithms:
+                seq.record(kp.OpAlgoDispatch(alg))
+            seq.record(kp.OpTensorSyncLocal([tensor_out]))
+            seq.eval()
 
         output = tensor_out.data().reshape(output_shape)
 
@@ -71,7 +72,7 @@ void main()
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        axes = input_tensors[1][0].data().astype(int) if len(input_tensors) > 1 and input_tensors[1][0] else None
+        axes = input_tensors[1][0].data().astype(int) if len(input_tensors) > 1 else None
 
         if self.noop_with_empty_axes and axes is None:
             return [input_tensors[0]]
