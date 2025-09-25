@@ -111,17 +111,6 @@ void main() {
         assert len(inputs) == 2, "ModOp requires 2 inputs"
 
         input_tensors = []
-        # for inp in inputs:
-        #     arr = np.asarray(inp)
-        #     if arr.dtype in (np.float16, np.float32, np.float64):
-        #         numpy_in = arr.reshape(-1).astype(np.float32)
-        #         tensor = self.manager.tensor(numpy_in)
-        #     elif arr.dtype in (np.int32, np.int64):
-        #         numpy_in = arr.reshape(-1).astype(np.int32)
-        #         tensor = self.manager.tensor_t(numpy_in, tensor_type=kp.TensorTypes.device)
-        #     else:
-        #         raise TypeError(f"Unsupported dtype {arr.dtype}. Only float32 and int32 supported.")
-        #     input_tensors.append((tensor, list(arr.shape)))
         for inp in inputs:
             if inp.dtype in (np.float16, np.float32, np.float64):
                 numpy_in = inp.reshape(-1).astype(np.float32)
