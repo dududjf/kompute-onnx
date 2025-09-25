@@ -82,12 +82,13 @@ void main() {
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
         tensor_out, output_shape = output_tensor_and_shape[0]
 
-        seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
-        for alg in updated_algorithms:
-            seq.record(kp.OpAlgoDispatch(alg))
-        seq.record(kp.OpTensorSyncLocal([tensor_out]))
-        seq.eval()
+        if updated_algorithms:
+            seq = self.manager.sequence()
+            seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+            for alg in updated_algorithms:
+                seq.record(kp.OpAlgoDispatch(alg))
+            seq.record(kp.OpTensorSyncLocal([tensor_out]))
+            seq.eval()
 
         output = tensor_out.data().reshape(output_shape)
 
