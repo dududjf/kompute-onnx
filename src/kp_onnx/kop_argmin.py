@@ -102,8 +102,10 @@ void main() {
         stride_before = int(np.prod(shape[:axis])) if axis > 0 else 1
         stride_after  = int(np.prod(shape[axis+1:])) if axis < rank - 1 else 1
 
-        out_shape = list(shape)
-        out_shape[axis:axis + 1] = [1] if self.keepdims else []
+        if self.keepdims:
+            out_shape = [1 if i == axis else d for i, d in enumerate(shape)]
+        else:
+            out_shape = [d for i, d in enumerate(shape) if i != axis]
 
         output_size = stride_before * stride_after
         if output_size <= 0:
