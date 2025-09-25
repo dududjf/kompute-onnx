@@ -1,7 +1,9 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_celu import CeluOp, DEFAULT_ALPHA
+from kp_onnx.kop_celu import CeluOp
+
+DEFAULT_ALPHA = 1.0
 
 device_id = 0
 mgr = Manager(device_id)
@@ -10,7 +12,7 @@ print(mgr.get_device_properties())
 celu_op = CeluOp(mgr)
 
 
-# Case 1: 默认
+# Case 1: 默认(alpha=1.0)
 numpy_in1 = np.random.uniform(-5, 5, (640, 10240)).astype(np.float32)
 
 start_time = time.time()
@@ -25,7 +27,7 @@ print('Max error:', np.abs(numpy_out - kp_out).max())
 print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 
-# Case 2: 设置 alpha = 0.5
+# Case 2: 指定 alpha
 numpy_in2 = np.random.uniform(-5, 5, (640, 10240)).astype(np.float32)
 
 start_time = time.time()

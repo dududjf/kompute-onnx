@@ -2,12 +2,10 @@ import kp
 import numpy as np
 from .shader_utils import compile_source
 
-DEFAULT_ALPHA = 1.0
-
 
 class CeluOp:
 
-    def __init__(self, manager: kp.Manager, alpha=DEFAULT_ALPHA):
+    def __init__(self, manager: kp.Manager, alpha=1.0):
         self.alpha = alpha
         self.manager = manager
         self.shader = compile_source("""
