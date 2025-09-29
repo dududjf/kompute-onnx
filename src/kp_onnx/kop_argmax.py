@@ -89,12 +89,13 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, shape_in = input_tensors[0]
+        axis = self.axis
 
-        self.axis += len(shape_in) if self.axis < 0 else 0
+        axis += len(shape_in) if axis < 0 else 0
 
-        axis_size = shape_in[self.axis]
-        batch_size = int(np.prod(shape_in[:self.axis])) if self.axis >= 0 else 1
-        block_size = int(np.prod(shape_in[self.axis + 1:])) if self.axis + 1 < len(shape_in) else 1
+        axis_size = shape_in[axis]
+        batch_size = int(np.prod(shape_in[:axis])) if axis >= 0 else 1
+        block_size = int(np.prod(shape_in[axis + 1:])) if axis + 1 < len(shape_in) else 1
 
         tensor_out = self.manager.tensor_t(np.zeros(np.prod(batch_size * block_size), dtype=np.int32))
         updated_tensors.append(tensor_out)
@@ -110,7 +111,9 @@ void main() {
             []
         ))
 
-        output_shape = list(shape_in)
-        output_shape[self.axis:self.axis + 1] = [1] if self.keepdims else []
+        if self.keepdims:
+            output_shape = shape_in[:axis] + [1] + shape_in[axis + 1:]
+        else:
+            output_shape = shape_in[:axis] + shape_in[axis + 1:]
 
         return [(tensor_out, output_shape)]
