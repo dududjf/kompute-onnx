@@ -46,30 +46,27 @@ void main()
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            if inp is None:
-                tensor = None
-            else:
-                numpy_in = inp.reshape(-1).astype(np.float32) \
-                    if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
-                tensor = self.manager.tensor(numpy_in)
+            numpy_in = inp.reshape(-1).astype(np.float32) \
+                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            tensor = self.manager.tensor(numpy_in)
             input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
         tensor_out, output_shape = output_tensor_and_shape[0]
 
-        seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([input_tensors[0][0]]))
-        for alg in updated_algorithms:
-            seq.record(kp.OpAlgoDispatch(alg))
-        seq.record(kp.OpTensorSyncLocal([tensor_out]))
-        seq.eval()
+        if updated_algorithms:
+            seq = self.manager.sequence()
+            seq.record(kp.OpTensorSyncDevice([input_tensors[0][0]]))
+            for alg in updated_algorithms:
+                seq.record(kp.OpAlgoDispatch(alg))
+            seq.record(kp.OpTensorSyncLocal([tensor_out]))
+            seq.eval()
 
         output = tensor_out.data().reshape(output_shape)
 
         for tensor, _ in input_tensors:
-            if tensor is not None:
-                del tensor
+            del tensor
         del updated_tensors
         return [output]
 

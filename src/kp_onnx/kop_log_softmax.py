@@ -80,13 +80,14 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, shape_in = input_tensors[0]
+        axis = self.axis
 
-        self.axis += len(shape_in) if self.axis < 0 else 0
+        axis += len(shape_in) if axis < 0 else 0
 
-        axis_size = shape_in[self.axis]
+        axis_size = shape_in[axis]
 
-        group_x = int(np.prod(shape_in[:self.axis])) if self.axis >= 0 else 1
-        block_size = int(np.prod(shape_in[self.axis + 1:])) if self.axis + 1 < len(shape_in) else 1
+        group_x = int(np.prod(shape_in[:axis])) if self.axis >= 0 else 1
+        block_size = int(np.prod(shape_in[axis + 1:])) if axis + 1 < len(shape_in) else 1
         total_size = int(np.prod(shape_in))
 
         tensor_out = self.manager.tensor(np.zeros(total_size, dtype=np.float32))
