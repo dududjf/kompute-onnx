@@ -46,11 +46,10 @@ void main()
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            if inp is not None:
-                numpy_in = inp.reshape(-1).astype(np.float32) \
-                    if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
-                tensor = self.manager.tensor(numpy_in)
-                input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else [len(inp)]))
+            numpy_in = inp.reshape(-1).astype(np.float32) \
+                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+            tensor = self.manager.tensor(numpy_in)
+            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else [len(inp)]))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -115,4 +114,5 @@ void main()
             shape_out = [shape_in[i] for i in range(len(shape_in)) if not axis_present[i]]
 
         return [(tensor_out, shape_out)]
+
 
