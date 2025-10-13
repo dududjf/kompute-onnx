@@ -34,7 +34,6 @@ kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.array_equal(np_out, kp_out))
 
-
 # Case 2 : 4D tensor, axis=2
 print('Case 2')
 numpy_in = np.random.random((3, 255, 1023, 15)).astype(np.float32)
@@ -48,7 +47,6 @@ start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.array_equal(np_out, kp_out))
-
 
 # Case 3 : 5D tensor, axis=3
 print('Case 3')
@@ -64,7 +62,6 @@ kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.array_equal(np_out, kp_out))
 
-
 # Case 4 : 2D tensor, axis=1
 print('Case 4')
 numpy_in = np.random.random((1023, 255)).astype(np.float32)
@@ -78,7 +75,6 @@ start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.array_equal(np_out, kp_out))
-
 
 # Case 5 : 2D tensor, axis=0
 print('Case 5')
@@ -94,7 +90,6 @@ kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.array_equal(np_out, kp_out))
 
-
 # Case 6 : 1D tensor, axis=0
 print('Case 6')
 numpy_in = np.random.random((1023,)).astype(np.float32)
@@ -108,7 +103,6 @@ start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print(np.array_equal(np_out, kp_out))
-
 
 # Case 7 : 3D tensor, negative axis=-1
 print('Case 7')
