@@ -24,9 +24,8 @@ layout(constant_id=1) const float total_out_f = 0.0;
 void main(){
     uint gid = gl_GlobalInvocationID.x;
 
-    int pos = int(idx_buf[gid]);
-    uint upos = uint(pos);
-    out_buf[upos] = in_buf[gid];
+    uint pos = uint(idx_buf[gid]);
+    out_buf[pos] = in_buf[gid];
 }
 """)
         self.copy_1d_shader = compile_source(r"""
@@ -107,22 +106,22 @@ void main(){
         assert len(input_tensors) >= 2, "MaxUnpool expects two inputs: X and indices"
         tensor_in, shape_in = input_tensors[0]
         tensor_idx, shape_idx = input_tensors[1]
-        assert len(shape_in) >= 3, f"Input must be ≥3D, got {shape_in}"
+        assert len(shape_in) >= 3, f"Input must be not less than 3D, got {shape_in}"
         assert shape_in == shape_idx, "Indices shape must match input"
 
         n, c = shape_in[:2]
         spatial_dims = len(shape_in) - 2
 
-        kernel = list(self.kernel_shape)
-        strides = list(self.strides or [1] * spatial_dims)
-        pads = list(self.pads or [0] * (2 * spatial_dims))
+        kernel = self.kernel_shape
+        strides = self.strides or [1] * spatial_dims
+        pads = self.pads or [0] * (2 * spatial_dims)
 
         inferred_shape = [n, c] + self._inferred_spatial_shape(shape_in[2:], kernel, strides, pads)
 
         # 解析 output_shape
         final_shape = inferred_shape
         if len(input_tensors) >= 3:
-            out_shape_list = [int(v) for v in input_tensors[2][0].data().ravel()]
+            out_shape_list = [int(v) for v in input_tensors[2][0].data().ravel()] # 改构造方式
             if len(out_shape_list) == len(inferred_shape):
                 final_shape = out_shape_list
             elif len(out_shape_list) == spatial_dims:
@@ -145,37 +144,32 @@ void main(){
         if final_shape == inferred_shape:
             return [(y_inferred, inferred_shape)]
 
-        # 裁剪或扩展中间形状
-        min_shape = [n, c] + [min(a, b) for a, b in zip(inferred_shape[2:], final_shape[2:])]
+        curr_tensor = y_inferred
+        curr_shape = inferred_shape
 
-        def process_dimension(curr_tensor, curr_shape, target_shape):
-            for d in range(spatial_dims):
-                curr_dim, target_dim = curr_shape[2 + d], target_shape[2 + d]
-                if curr_dim == target_dim:
-                    continue
+        for d in range(spatial_dims):
+            curr_dim = curr_shape[2 + d]
+            target_dim = final_shape[2 + d]
+            if curr_dim == target_dim:
+                continue
 
-                pre_size = int(n * c * np.prod(curr_shape[2:2 + d]))
-                post_in = int(np.prod(curr_shape[3 + d:]))
-                next_shape = curr_shape.copy()
-                next_shape[2 + d] = target_dim
-                post_out = int(np.prod(next_shape[3 + d:]))
+            pre_size = int(n * c * np.prod(curr_shape[2:2 + d]))
+            post_in = int(np.prod(curr_shape[3 + d:]))
+            curr_shape[2 + d] = target_dim
+            post_out = int(np.prod(curr_shape[3 + d:]))
 
-                next_tensor = self.manager.tensor(np.zeros(int(np.prod(next_shape)), dtype=np.float32))
-                updated_tensors.append(next_tensor)
-                updated_algorithms.append(self.manager.algorithm(
-                    [curr_tensor, next_tensor],
-                    self.copy_1d_shader,
-                    (pre_size, min(curr_dim, target_dim), post_in),
-                    [post_in, post_out, curr_dim, target_dim],
-                    []
-                ))
+            next_tensor = self.manager.tensor(np.zeros(int(np.prod(curr_shape)), dtype=np.float32))
+            updated_tensors.append(next_tensor)
 
-                curr_tensor, curr_shape = next_tensor, next_shape
-            return curr_tensor, curr_shape
+            updated_algorithms.append(self.manager.algorithm(
+                [curr_tensor, next_tensor],
+                self.copy_1d_shader,
+                (pre_size, min(curr_dim, target_dim), post_in),
+                [post_in, post_out, curr_dim, target_dim],
+                []
+            ))
 
-        # 逐维裁剪 → 扩展
-        tensor_out, shape_out = process_dimension(y_inferred, inferred_shape, min_shape)
-        if shape_out != final_shape:
-            tensor_out, shape_out = process_dimension(tensor_out, shape_out, final_shape)
+            curr_tensor = next_tensor
 
+        tensor_out, shape_out = curr_tensor, curr_shape
         return [(tensor_out, shape_out)]
