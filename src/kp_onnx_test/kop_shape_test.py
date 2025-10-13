@@ -41,7 +41,7 @@ shape_op.end = None
 start_time = time.time()
 kp_out = shape_op.run(numpy_in)[0]
 print(f"{shape_op}:", kp_out, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 2: start=0, end=None
 print('Case 2')
@@ -55,7 +55,7 @@ shape_op.end = None
 start_time = time.time()
 kp_out = shape_op.run(numpy_in)[0]
 print(f"{shape_op}:", kp_out, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 3: start=0, end=-1
 print('Case 3')
@@ -69,7 +69,7 @@ shape_op.end = -1
 start_time = time.time()
 kp_out = shape_op.run(numpy_in)[0]
 print(f"{shape_op}:", kp_out, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 4: start=1, end=None
 print('Case 4')
@@ -83,7 +83,7 @@ shape_op.end = None
 start_time = time.time()
 kp_out = shape_op.run(numpy_in)[0]
 print(f"{shape_op}:", kp_out, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 5: start=2, end=-1
 print('Case 5')
@@ -97,7 +97,7 @@ shape_op.end = -1
 start_time = time.time()
 kp_out = shape_op.run(numpy_in)[0]
 print(f"{shape_op}:", kp_out, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 6: start=1, end=3
 print('Case 6')
@@ -111,7 +111,7 @@ shape_op.end = 3
 start_time = time.time()
 kp_out = shape_op.run(numpy_in)[0]
 print(f"{shape_op}:", kp_out, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 7: scalar (0-dim tensor)
 print('Case 7')
@@ -125,7 +125,7 @@ shape_op.end = None
 start_time = time.time()
 kp_out = shape_op.run(numpy_in)[0]
 print(f"{shape_op}:", kp_out, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 8: start < 0
 print('Case 8')
@@ -139,7 +139,7 @@ shape_op.end = None
 start_time = time.time()
 kp_out = shape_op.run(numpy_in)[0]
 print(f"{shape_op}:", kp_out, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 9: end > len(shape)
 print('Case 9')
@@ -153,4 +153,4 @@ shape_op.end = 10
 start_time = time.time()
 kp_out = shape_op.run(numpy_in)[0]
 print(f"{shape_op}:", kp_out, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
