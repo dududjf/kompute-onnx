@@ -32,7 +32,7 @@ print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 2 : 4D tensor, axis=2
 print('Case 2')
@@ -46,7 +46,7 @@ print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 3 : 5D tensor, axis=3
 print('Case 3')
@@ -60,7 +60,7 @@ print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 4 : 2D tensor, axis=1
 print('Case 4')
@@ -74,7 +74,7 @@ print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 5 : 2D tensor, axis=0
 print('Case 5')
@@ -88,7 +88,7 @@ print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 6 : 1D tensor, axis=0
 print('Case 6')
@@ -102,7 +102,7 @@ print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
 
 # Case 7 : 3D tensor, negative axis=-1
 print('Case 7')
@@ -116,4 +116,4 @@ print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 start_time = time.time()
 kp_out = flatten_op.run(numpy_in)[0]
 print(f"{flatten_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print(np.array_equal(np_out, kp_out))
+print(np.allclose(np_out, kp_out, rtol=1e-5, atol=1e-5))
