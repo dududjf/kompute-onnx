@@ -46,10 +46,11 @@ void main()
     def run(self, *inputs):
         input_tensors = []
         for inp in inputs:
-            numpy_in = inp.reshape(-1).astype(np.float32) \
-                if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
-            tensor = self.manager.tensor(numpy_in)
-            input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else []))
+            if inp is not None:
+                numpy_in = inp.reshape(-1).astype(np.float32) \
+                    if isinstance(inp, np.ndarray) else np.array(inp, dtype=np.float32)
+                tensor = self.manager.tensor(numpy_in)
+                input_tensors.append((tensor, list(inp.shape) if isinstance(inp, np.ndarray) else [len(inp)]))
 
         updated_algorithms, updated_tensors = [], []
         output_tensor_and_shape = self.fuse(input_tensors, updated_algorithms, updated_tensors)
@@ -72,7 +73,7 @@ void main()
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        axes = input_tensors[1][0].data().astype(int) if len(input_tensors) > 1 and input_tensors[1][0] else None
+        axes = input_tensors[1][0].data().astype(int) if len(input_tensors) > 1 else None
 
         if self.noop_with_empty_axes and axes is None:
             return [input_tensors[0]]

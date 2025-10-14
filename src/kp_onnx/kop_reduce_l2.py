@@ -1,9 +1,9 @@
-import numpy as np
 import kp
+import numpy as np
 from .shader_utils import compile_source
 
 
-class ReduceL1Op:
+class ReduceL2Op:
     def __init__(self, manager: kp.Manager, keepdims=True, noop_with_empty_axes=False):
         self.manager = manager
         self.keepdims = keepdims
@@ -30,15 +30,15 @@ void main()
 
     float acc = 0;
     for(uint i = 0; i < dimension; ++i, in_offset += block_size) {
-        acc += abs(in_tensor[in_offset]);
+        acc += pow(in_tensor[in_offset], 2);
     }
 
-    out_tensor[out_offset] = acc;
+    out_tensor[out_offset] = sqrt(acc);
 }
 """)
 
     def __repr__(self):
-        return f"ReduceL1Op({self.manager.get_device_properties()['device_name']})"
+        return f"ReduceL2Op({self.manager.get_device_properties()['device_name']})"
 
     def __str__(self):
         return self.__repr__()
