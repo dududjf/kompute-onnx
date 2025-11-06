@@ -1,4 +1,16 @@
+import random
+
+from kp import Manager
 import numpy as np
+import time
+from kp_onnx.kop_affine_grid import AffineGridOp
+
+# Device
+device_id = 0
+mgr = Manager(device_id)
+print(mgr.get_device_properties())
+
+affinegrid_op = AffineGridOp(mgr)
 
 
 def construct_original_grid(data_size, align_corners):
@@ -75,16 +87,81 @@ def apply_affine_transform(theta_n, original_grid_homo):
         return grid.astype(np.float32)
 
 
-def _run(theta, size, align_corners=None):  # type: ignore
-    align_corners = align_corners or self.align_corners  # type: ignore
+def np_affine_grid(theta, size, align_corners=None):
+    align_corners = align_corners or 0
     _, _, *data_size = size
     original_grid = construct_original_grid(data_size, align_corners)
     grid = apply_affine_transform(theta, original_grid)
     return grid
 
-x = np.array([[[1, 2, 3], [4, 5, 6]], [[1, 2, 3], [4, 5, 6]]])
-size = np.array([2, 1, 2, 2])
 
-print("X: ", x)
-print('-----------')
-print(_run(x, size, align_corners=1))
+# -------- Case 1: data: 2D --------
+print("Case 1: data: 2D, align_corners: 0")
+theta = np.random.random((1, 2, 3)).astype(np.float32)
+size = np.array([1, 3, 3, 4]).astype(np.int64)
+
+start_time = time.time()
+np_out = np_affine_grid(theta, size)
+print("NumPy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+affinegrid_op.align_corners = 0
+kp_out = affinegrid_op.run(theta, size)[0]
+print(f"{affinegrid_op}: ", time.time() - start_time, "seconds")
+
+print("Max error:", np.abs(np_out - kp_out).max())
+print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+print("----")
+
+# -------- Case 2: data: 2D, align_corners: 1 --------
+print("Case 2: data: 2D, align_corners: 1")
+theta = np.random.random((8, 2, 3)).astype(np.float32)
+size = np.array([1, 3, 8, 12]).astype(np.int64)
+
+start_time = time.time()
+np_out = np_affine_grid(theta, size, align_corners=1)
+print("NumPy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+affinegrid_op.align_corners = 1
+kp_out = affinegrid_op.run(theta, size)[0]
+print(f"{affinegrid_op}: ", time.time() - start_time, "seconds")
+
+print("Max error:", np.abs(np_out - kp_out).max())
+print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+print("----")
+
+# -------- Case 3: data: 3D, align_corners: 0 --------
+print("Case 3: data: 3D, align_corners: 0")
+theta = np.random.random((511, 3, 4)).astype(np.float32)
+size = np.array([1, 3, 3, 6, 8]).astype(np.int64)
+
+start_time = time.time()
+np_out = np_affine_grid(theta, size)
+print("NumPy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+affinegrid_op.align_corners = 0
+kp_out = affinegrid_op.run(theta, size)[0]
+print(f"{affinegrid_op}: ", time.time() - start_time, "seconds")
+
+print("Max error:", np.abs(np_out - kp_out).max())
+print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+print("----")
+
+# -------- Case 4: data: 3D, align_corners: 1 --------
+print("Case 4: data: 3D, align_corners: 1")
+theta = np.random.random((511, 3, 4)).astype(np.float32)
+size = np.array([1, 3, 3, 8, 8]).astype(np.int64)
+
+start_time = time.time()
+np_out = np_affine_grid(theta, size, align_corners=1)
+print("NumPy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+affinegrid_op.align_corners = 1
+kp_out = affinegrid_op.run(theta, size)[0]
+print(f"{affinegrid_op}: ", time.time() - start_time, "seconds")
+
+print("Max error:", np.abs(np_out - kp_out).max())
+print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))

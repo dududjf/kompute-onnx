@@ -26,56 +26,67 @@ def np_rms_norm(X, Scale, axis=-1, epsilon=1e-05, stash_type=1):
     x_squared_mean = np.mean(x_squared, axis=tuple(range(axis, len(shape))), keepdims=True)
     # epsilon adjustment to avoid divide-by-zero.
     rmseps = x_squared_mean + epsilon
-
+    # This computes RMS for every x_mat's column.
     rms = np.sqrt(rmseps)
     rms_reciprocal = np.reciprocal(rms)
-    print("rms_reciprocal shape:", rms_reciprocal.shape)
-
     y_mat = X * rms_reciprocal
     Y = y_mat * Scale
 
-    return Y.astype(X.dtype)
+    return Y
 
 
-x = np.random.random((255, 511, 1023)).astype(np.float32)
-
-# -------- Case 1: data: 3D --------
-print("Case 1: data: 3D")
-scale = np.random.random((1023,)).astype(np.float32)
+# -------- Case 1: data: 1D --------
+print("Case 1: data: 1D")
+x = np.random.random((32,)).astype(np.float32)
+scale = np.random.random((1,)).astype(np.float32)
 
 start_time = time.time()
 np_out = np_rms_norm(x, scale)
-print("NumPy:", time.time() - start_time, "seconds")
+print("NumPy:", np_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
 rms_normalization_op.axis = -1
 rms_normalization_op.epsilon = 1e-05
-rms_normalization_op.stash_type = 1
 kp_out = rms_normalization_op.run(x, scale)[0]
-print(f"{rms_normalization_op}: ", time.time() - start_time, "seconds")
+print(f"{rms_normalization_op}: ", kp_out.shape, time.time() - start_time, "seconds")
 
 print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
-# -------- Case 2: data: 3D, axis: 0, epsilon: 1e-03 --------
-print("Case 2: data: 3D, axis: 0, epsilon: 1e-03")
-scale = np.random.random((255, 511, 1)).astype(np.float32)
+# -------- Case 2: data: 2D --------
+print("Case 2: data: 2D")
+x = np.random.random((32, 511)).astype(np.float32)
+scale = np.random.random((511,)).astype(np.float32)
+
+start_time = time.time()
+np_out = np_rms_norm(x, scale)
+print("NumPy:", np_out.shape, time.time() - start_time, "seconds")
+
+start_time = time.time()
+rms_normalization_op.axis = -1
+rms_normalization_op.epsilon = 1e-05
+kp_out = rms_normalization_op.run(x, scale)[0]
+print(f"{rms_normalization_op}: ", kp_out.shape, time.time() - start_time, "seconds")
+
+print("Max error:", np.abs(np_out - kp_out).max())
+print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+print("----")
+
+# -------- Case 3: data: 4D, axis: 0, epsilon: 1e-03 --------
+print("Case 3: data: 4D, axis: 0, epsilon: 1e-03")
+x = np.random.random((32, 32, 16, 8)).astype(np.float32)
+scale = np.random.random((1, 32, 16, 1)).astype(np.float32)
 
 start_time = time.time()
 np_out = np_rms_norm(x, scale, axis=0, epsilon=1e-03, stash_type=1)
-print("NumPy:", time.time() - start_time, "seconds")
+print("NumPy:", np_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
 rms_normalization_op.axis = 0
 rms_normalization_op.epsilon = 1e-03
-rms_normalization_op.stash_type = 1
 kp_out = rms_normalization_op.run(x, scale)[0]
-print(f"{rms_normalization_op}: ", time.time() - start_time, "seconds")
-
-print("x_shape:", x.shape)
-print("np_out_shape: ", np_out.shape)
-print("kp_out_shape: ", kp_out.shape)
+print(f"{rms_normalization_op}: ", kp_out.shape, time.time() - start_time, "seconds")
 
 print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))

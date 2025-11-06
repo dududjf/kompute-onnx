@@ -22,6 +22,7 @@ layout(constant_id = 4) const float step_f = 0;           // 步长
 void main() {
     uint gx = gl_GlobalInvocationID.x;
     uint gy = gl_GlobalInvocationID.y;
+    uint gz = gl_GlobalInvocationID.z;
 
     uint elements_per_slice = uint(elements_per_slice_f);
     uint start = uint(start_f);
@@ -29,14 +30,8 @@ void main() {
     uint axis_size = uint(axis_size_f);
     uint step = uint(step_f);
 
-    // 计算输入和输出的偏移量
-    uint in_base_offset = gx * axis_size * elements_per_slice;
-    uint out_offset = gx * size * elements_per_slice + gy;
-
-    // 计算输入索引 - 考虑步长
-    uint axis_index = start + (gy / elements_per_slice) * step;
-    uint inner_index = gy % elements_per_slice;
-    uint in_offset = in_base_offset + axis_index * elements_per_slice + inner_index;
+    uint in_offset = (gx * axis_size + start + gy * step) * elements_per_slice + gz;
+    uint out_offset = (gx * size + gy) * elements_per_slice + gz;
 
     out_tensor[out_offset] = in_tensor[in_offset];
 }
@@ -64,7 +59,6 @@ void main() {
         for alg in updated_algorithms:
             seq.record(kp.OpAlgoDispatch(alg))
 
-        # 只同步非空张量
         non_empty_tensors = [tensor for tensor, _ in output_tensors_and_shapes if tensor is not None]
         if non_empty_tensors:
             seq.record(kp.OpTensorSyncLocal(non_empty_tensors))
@@ -76,7 +70,6 @@ void main() {
                 output = tensor.data().reshape(shape)
                 outputs.append(output)
             else:
-                # 创建空张量
                 empty_array = np.array([], dtype=np.float32).reshape(shape)
                 outputs.append(empty_array)
 
@@ -98,51 +91,36 @@ void main() {
         else:
             axes = [a + len(shape_in) if a < 0 else a for a in axes]
 
-        # 设置指定轴的start和end
         for i, axis in enumerate(axes):
-            # 处理负索引
-            starts[i] = starts[i] + shape_in[i] if starts[i] < 0 else starts[i]
-            starts[i] = max(0, min(starts[i], shape_in[axis]))
-            ends[i] = ends[i] + shape_in[i] if ends[i] < 0 else ends[i]
-            ends[i] = max(0, min(ends[i], shape_in[axis]))
+            if starts[i] < 0:
+                starts[i] = starts[i] + shape_in[i]
+            if ends[i] < 0:
+                ends[i] = ends[i] + shape_in[i]
 
-        # 设置步长
         if steps is None:
             steps = [1] * len(axes)
 
-        # 处理多个轴的切片（每次处理一个轴）
         tensor_out = tensor_in
-        current_shape = [i for i in shape_in]
+        current_shape = shape_in
 
         for i in range(len(axes)):
             axis = axes[i]
 
-            # 获取当前轴的start, end和step
             start = starts[i]
             end = ends[i]
             step = steps[i]
 
-            # 计算切片大小
-            if step > 0:
-                size = max(0, (end - start + step - 1) // step)
-            else:
-                size = max(0, (start - end + (-step) - 1) // (-step))
+            size = (end - start + step - 1) // step
 
-            # 创建输出形状
-            shape_out = [i for i in current_shape]
+            shape_out = current_shape.copy()
             shape_out[axis] = size
 
-            # 计算预元素和每个切片的元素
-            pre_elements = np.prod(shape_out[:axis]) if axis > 0 else 1
-            elements_per_slice = np.prod(shape_out[axis + 1:]) if axis + 1 < len(shape_out) else 1
-            pre_elements = int(pre_elements)
-            elements_per_slice = int(elements_per_slice)
+            pre_elements = int(np.prod(shape_out[:axis])) if axis > 0 else 1
+            elements_per_slice = int(np.prod(shape_out[axis + 1:])) if axis + 1 < len(shape_out) else 1
 
-            # 计算总元素数量
-            total_elements = int(pre_elements * size * elements_per_slice)
+            total_elements = pre_elements * size * elements_per_slice
 
             if total_elements == 0:
-                # 对于大小为0的情况，创建空张量
                 return [(None, shape_out)]
 
             tensor_in = tensor_out
@@ -150,10 +128,7 @@ void main() {
             tensor_out = self.manager.tensor(np.zeros(total_elements, dtype=np.float32))
             updated_tensors.append(tensor_out)
 
-            # 设置工作组大小
-            workgroup = (pre_elements, size * elements_per_slice, 1)
-
-            # 创建并添加算法
+            workgroup = (pre_elements, size, elements_per_slice)
             updated_algorithms.append(
                 self.manager.algorithm(
                     [tensor_in, tensor_out],
@@ -164,8 +139,6 @@ void main() {
                 )
             )
 
-            # 更新当前张量和形状，用于处理多个轴
             current_shape = shape_out
 
-        # 返回最终结果
         return [(tensor_out, current_shape)]

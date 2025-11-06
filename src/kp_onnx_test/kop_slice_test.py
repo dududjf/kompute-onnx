@@ -49,7 +49,7 @@ x = np.random.random((32, 32, 8, 32)).astype(np.float32)
 
 print("Case 1: not axes, not steps")
 starts = np.array([2, 0, 0], dtype=np.int64)
-ends = np.array([30, 12, 32], dtype=np.int64)
+ends = np.array([30, 12, 0], dtype=np.int64)
 
 start_time = time.time()
 np_out = np_slice(x, starts=starts, ends=ends)
@@ -64,8 +64,8 @@ print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print('----')
 
 print("Case 2: axes is [0, 2], not steps")
-starts = np.array([0, 2, -20], dtype=np.int64)
-ends = np.array([-1, 1000, -1], dtype=np.int64)
+starts = np.array([0, 2, -2], dtype=np.int64)
+ends = np.array([-1, 4, -1], dtype=np.int64)
 axes = np.array([0, 1, -1], dtype=np.int64)
 
 start_time = time.time()

@@ -13,8 +13,8 @@ class RmsNormalizationOp:
 #version 450
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 
-layout(binding=0) readonly  buffer buf_in_tensor  { float in_tensor[];  };
-layout(binding=1) writeonly  buffer buf_out_tensor   { float out_tensor[];   };
+layout(binding=0) buffer buf_in_tensor  { float in_tensor[];  };
+layout(binding=1) buffer buf_out_tensor   { float out_tensor[];   };
 
 void main() {
     uint gx = gl_GlobalInvocationID.x;
@@ -24,78 +24,55 @@ void main() {
         self.compiled_shader_mean = compile_source('''
 #version 450
 layout (local_size_x = 1, local_size_y = 1) in;
-layout (binding = 0) buffer buf_in_tensor { float in_tensor[]; };   // 输入张量
-layout (binding = 1) buffer buf_out_tensor { float out_tensor[]; }; // 输出张量
-layout (constant_id = 0) const float dimension_f = 0;   // 归约维度的大小
-layout (constant_id = 1) const float block_size_f = 0;  // 后缀块的大小
+layout (binding = 0) buffer buf_in_tensor { float in_tensor[]; };
+layout (binding = 1) buffer buf_out_tensor { float out_tensor[]; };
+layout (constant_id = 0) const float dimension_f = 0;
+layout (constant_id = 1) const float block_size_f = 0;
 
 void main()
 {
-    uint gx = gl_GlobalInvocationID.x;  // 块组索引
-    uint gy = gl_GlobalInvocationID.y;  // 归约维度内的索引
+    uint gx = gl_GlobalInvocationID.x;
+    uint gy = gl_GlobalInvocationID.y;
 
     uint dimension = uint(dimension_f);
     uint block_size = uint(block_size_f);
 
-    // 计算输入和中间张量的偏移量
     uint in_offset = gx * dimension * block_size + gy;
     uint out_offset = gx * block_size + gy;
 
-    // 累加归约维度上的元素并计算平均值
     out_tensor[out_offset] = 0.0;
     for(uint i = 0; i < dimension; ++i, in_offset += block_size)
         out_tensor[out_offset] += in_tensor[in_offset];
     out_tensor[out_offset] /= dimension;
 }
 ''')
-        self.compiled_shader_sq = compile_source('''
-#version 450
-layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 
-layout(binding = 0) readonly  buffer buf_in_tensor  { float in_tensor[];  };
-layout(binding = 1) writeonly buffer buf_out_tensor { float out_tensor[]; };
-layout(constant_id = 0) const float epsilon_f = 0;
-
-void main() {
-    uint gx = gl_GlobalInvocationID.x;
-    out_tensor[gx] = 1.0 / sqrt(in_tensor[gx] + epsilon_f);
-}
-''')
-        self.compiled_shader_matmul = compile_source('''
+        self.compiled_shader_multiply = compile_source('''
 #version 450
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 layout (binding = 0) buffer buf_in_tensor_1 { float in_tensor_1[]; };
 layout (binding = 1) buffer buf_in_tensor_2 { float in_tensor_2[]; };
-layout (binding = 2) buffer buf_in_tensor_3 { float in_tensor_3[]; };
-layout (binding = 3) buffer buf_out_tensor  { float out_tensor[]; };
-layout (constant_id = 0) const float size_x_inf = 0;
-layout (constant_id = 1) const float size_y_inf = 0;
-layout (constant_id = 2) const float size_z_inf = 0;
-layout (constant_id = 3) const float size_x_rmsf = 0;
-layout (constant_id = 4) const float size_y_rmsf = 0;
-layout (constant_id = 5) const float size_z_rmsf = 0;
-layout (constant_id = 6) const float size_x_scalef = 0;
-layout (constant_id = 7) const float size_y_scalef = 0;
-layout (constant_id = 8) const float size_z_scalef = 0;
+layout (binding = 2) buffer buf_out_tensor  { float out_tensor[]; };
+layout (constant_id = 0) const float size_x_in_f = 0;
+layout (constant_id = 1) const float size_y_in_f = 0;
+layout (constant_id = 2) const float size_z_in_f = 0;
+layout (constant_id = 3) const float size_x_scale_f = 0;
+layout (constant_id = 4) const float size_y_scale_f = 0;
+layout (constant_id = 5) const float size_z_scale_f = 0;
 
 void main()
 {
     uint gx = gl_GlobalInvocationID.x;
     uint gy = gl_GlobalInvocationID.y;
     uint gz = gl_GlobalInvocationID.z;
-    uint size_x_in = uint(size_x_inf);
-    uint size_y_in = uint(size_y_inf);
-    uint size_z_in = uint(size_z_inf);
-    uint size_x_rms = uint(size_x_rmsf);
-    uint size_y_rms = uint(size_y_rmsf);
-    uint size_z_rms = uint(size_z_rmsf);
-    uint size_x_scale = uint(size_x_scalef);
-    uint size_y_scale = uint(size_y_scalef);
-    uint size_z_scale = uint(size_z_scalef);
+    uint size_x_in = uint(size_x_in_f);
+    uint size_y_in = uint(size_y_in_f);
+    uint size_z_in = uint(size_z_in_f);
+    uint size_x_scale = uint(size_x_scale_f);
+    uint size_y_scale = uint(size_y_scale_f);
+    uint size_z_scale = uint(size_z_scale_f);
     uint stride_y_in = size_z_in;
     uint stride_x_in = size_y_in * stride_y_in;
-    uint stride_y_rms = size_z_rms;
-    uint stride_x_rms = size_y_rms * stride_y_rms;
     uint stride_y_scale = size_z_scale;
     uint stride_x_scale = size_y_scale * stride_y_scale;
     uint stride_y = size_z_in;
@@ -103,17 +80,41 @@ void main()
     uint x_in = min(gx, size_x_in - 1);
     uint y_in = min(gy, size_y_in - 1);
     uint z_in = min(gz, size_z_in - 1);
-    uint x_rms = min(gx, size_x_rms - 1);
-    uint y_rms = min(gy, size_y_rms - 1);
-    uint z_rms = min(gz, size_z_rms - 1);
     uint x_scale = min(gx, size_x_scale - 1);
     uint y_scale = min(gy, size_y_scale - 1);
     uint z_scale = min(gz, size_z_scale - 1);
     uint p_in = x_in * stride_x_in + y_in * stride_y_in + z_in;
-    uint p_rms = x_rms * stride_x_rms + y_rms * stride_y_rms + z_rms;
     uint p_scale = x_scale * stride_x_scale + y_scale * stride_y_scale + z_scale;
-    out_tensor[gx * stride_x + gy * stride_y + gz] = in_tensor_1[p_in] * in_tensor_2[p_rms] * in_tensor_3[p_scale];
+    out_tensor[gx * stride_x + gy * stride_y + gz] = in_tensor_1[p_in] * in_tensor_2[p_scale];
 }''')
+
+        # 应用核：以 kept_size 为网格，内部遍历 reduce_size，将 mean 的每个元素映射到 X 的一段元素
+        self.compiled_shader_apply_kept = compile_source('''
+#version 450
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout (binding = 0) buffer buf_in_tensor   { float in_tensor[];  };
+layout (binding = 1) buffer buf_mean_tensor { float mean_tensor[];    };
+layout (binding = 2) buffer buf_out_tensor  { float out_tensor[]; };
+
+layout (constant_id = 0) const float kept_size_f   = 0;
+layout (constant_id = 1) const float reduce_size_f = 0;
+layout (constant_id = 2) const float epsilon_f     = 0;
+
+void main()
+{
+    uint kept_idx = gl_GlobalInvocationID.x;
+    
+    uint kept_size = uint(kept_size_f);
+    uint reduce_size = uint(reduce_size_f);
+
+    float inv_rms = 1.0 / sqrt(mean_tensor[kept_idx] + epsilon_f);
+    uint base = kept_idx * reduce_size;
+    for (uint s = 0; s < reduce_size; ++s, ++base) {
+        out_tensor[base] = in_tensor[base] * inv_rms;
+    }
+}
+''')
 
     def __repr__(self):
         return f"RmsNormalizationOp({self.manager.get_device_properties()['device_name']})"
@@ -134,7 +135,7 @@ void main()
         tensor_out, shape_in = output_tensor_and_shape[0]
 
         seq = self.manager.sequence()
-        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors]))
+        seq.record(kp.OpTensorSyncDevice([t[0] for t in input_tensors] + updated_tensors))
         for alg in updated_algorithms:
             seq.record(kp.OpAlgoDispatch(alg))
         seq.record(kp.OpTensorSyncLocal([tensor_out]))
@@ -149,18 +150,18 @@ void main()
 
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
-        tensor_in, shape_in = input_tensors[0]
-        tensor_scale, shape_scale = input_tensors[1]
-
         assert self.stash_type == 1, "RMSNormalization not implemented for stash_type != 1."
+        tensor_in, shape_in = input_tensors[0]
+        ori_tensor = tensor_in
+        tensor_scale, shape_scale = input_tensors[1]
         epsilon = self.epsilon
 
         axis = self.axis if self.axis >= 0 else len(shape_in) + self.axis
 
         axes = list(range(axis, len(shape_in)))
         axis_present = [False] * len(shape_in)
-        for axis in axes:
-            axis_present[axis] = True
+        for i in axes:
+            axis_present[i] = True
 
         tensor_pow = self.manager.tensor(np.zeros(np.prod(shape_in), dtype=np.float32))
         updated_tensors.append(tensor_pow)
@@ -189,87 +190,49 @@ void main()
             else:
                 block_size *= int(shape_in[i])
 
-        shape_rms = [1 if axis_present[i] else shape_in[i] for i in range(len(shape_in))]
-        tensor_rms = self.manager.tensor(np.zeros(np.prod(shape_rms), dtype=np.float32))
+        kept_size = int(np.prod(shape_in[:axis])) if axis > 0 else 1
+        reduce_size = int(np.prod(shape_in[axis:])) if axis < len(shape_in) else 1
+        tensor_mat = self.manager.tensor(np.zeros(np.prod(shape_in), dtype=np.float32))
+        updated_tensors.append(tensor_mat)
         updated_algorithms.append(self.manager.algorithm(
-            [tensor_mean, tensor_rms],
-            self.compiled_shader_sq,
-            (int(np.prod(shape_rms)), 1, 1),
-            spec_consts=[epsilon]
+            [ori_tensor, tensor_mean, tensor_mat],
+            self.compiled_shader_apply_kept,
+            (kept_size, 1, 1),
+            [kept_size, reduce_size, epsilon],
+            []
         ))
 
-        max_dims = max(len(shape_in), len(shape_rms), len(shape_scale))
+        new_shape_scale = [1] * (len(shape_in) - len(shape_scale)) + shape_scale
 
-        new_shape_rms = [1] * (max_dims - len(shape_rms)) + shape_rms
-        new_shape_scale = [1] * (max_dims - len(shape_scale)) + shape_scale
-
-        new_rms = tensor_rms
-        algorithms_rms, next_tensors_rms = [], []
-        if shape_in[:-2] != new_shape_rms[:-2] and not all(e == 1 for e in new_shape_rms[:-2]):
-            final_shape_rms = shape_in[:-2] + list(new_shape_rms[-2:])
-            new_rms = broadcast_to(tensor_rms, new_shape_rms, final_shape_rms, algorithms_rms, next_tensors_rms, self.manager)
-            updated_algorithms.extend(algorithms_rms)
-            new_shape_rms = final_shape_rms
-
-        new_scale = tensor_scale
-        algorithms_scale, next_tensors_scale = [], []
+        new_tensor_scale = tensor_scale
+        algorithms, next_tensors = [], []
         if shape_in[:-2] != new_shape_scale[:-2] and not all(e == 1 for e in new_shape_scale[:-2]):
             final_shape_scale = shape_in[:-2] + list(new_shape_scale[-2:])
-            new_scale = broadcast_to(tensor_scale, new_shape_scale, final_shape_scale, algorithms_scale, next_tensors_scale, self.manager)
-            updated_algorithms.extend(algorithms_scale)
+            new_tensor_scale = broadcast_to(tensor_scale, new_shape_scale, final_shape_scale,
+                                            algorithms, next_tensors, self.manager)
+            updated_algorithms.extend(algorithms)
             new_shape_scale = final_shape_scale
 
         if len(shape_in) == 1:
-            size_x_in = shape_in[0]
-            size_y_in = 1
-            size_z_in = 1
+            size_x_in, size_y_in, size_z_in = shape_in[0], 1, 1
+            size_x_scale, size_y_scale, size_z_scale = new_shape_scale[0], 1, 1
         elif len(shape_in) == 2:
-            size_x_in = shape_in[0]
-            size_y_in = shape_in[1]
-            size_z_in = 1
+            size_x_in, size_y_in, size_z_in = shape_in[0], shape_in[1], 1
+            size_x_scale, size_y_scale, size_z_scale = new_shape_scale[0], new_shape_scale[1], 1
         else:
-            size_x_in = np.prod(shape_in[:-2])
-            size_y_in = shape_in[-2]
-            size_z_in = shape_in[-1]
+            size_x_in, size_y_in, size_z_in = np.prod(shape_in[:-2]), shape_in[-2], shape_in[-1]
+            size_x_scale, size_y_scale, size_z_scale = \
+                np.prod(new_shape_scale[:-2]), new_shape_scale[-2], new_shape_scale[-1]
 
-        if len(new_shape_rms) == 1:
-            size_x_rms = new_shape_rms[0]
-            size_y_rms = 1
-            size_z_rms = 1
-        elif len(new_shape_rms) == 2:
-            size_x_rms = new_shape_rms[0]
-            size_y_rms = new_shape_rms[1]
-            size_z_rms = 1
-        else:
-            size_x_rms = np.prod(new_shape_rms[:-2])
-            size_y_rms = new_shape_rms[-2]
-            size_z_rms = new_shape_rms[-1]
-
-        if len(new_shape_scale) == 1:
-            size_x_scale = new_shape_scale[0]
-            size_y_scale = 1
-            size_z_scale = 1
-        elif len(new_shape_scale) == 2:
-            size_x_scale = new_shape_scale[0]
-            size_y_scale = new_shape_scale[1]
-            size_z_scale = 1
-        else:
-            size_x_scale = np.prod(new_shape_scale[:-2])
-            size_y_scale = new_shape_scale[-2]
-            size_z_scale = new_shape_scale[-1]
-
-        size = np.prod(shape_in)
-        tensor_out = self.manager.tensor(np.zeros(size, dtype=np.float32))
+        tensor_out = self.manager.tensor(np.zeros(np.prod(shape_in), dtype=np.float32))
         updated_tensors.append(tensor_out)
-
         workgroup = (size_x_in, size_y_in, size_z_in)
-
-        updated_algorithms.append(self.manager.algorithm([tensor_in, new_rms, new_scale, tensor_out],
-                                                         self.compiled_shader_matmul,
-                                                         workgroup,
-                                                         [size_x_in, size_y_in, size_z_in,
-                                                          size_x_rms, size_y_rms, size_z_rms,
-                                                          size_x_scale, size_y_scale, size_z_scale],
-                                                         []))
+        updated_algorithms.append(self.manager.algorithm(
+            [tensor_mat, new_tensor_scale, tensor_out],
+            self.compiled_shader_multiply,
+            workgroup,
+            [size_x_in, size_y_in, size_z_in,
+             size_x_scale, size_y_scale, size_z_scale],
+            []))
 
         return [(tensor_out, shape_in)]

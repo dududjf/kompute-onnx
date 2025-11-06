@@ -76,7 +76,7 @@ void main() {
         tmpshape = [batch_size, input_channels, input_height // blocksize, blocksize, input_width // blocksize, blocksize]
 
         perm_vals = [0, 3, 5, 1, 2, 4]
-        shape_out = [int(tmpshape[i]) for i in perm_vals]
+        shape_out = [tmpshape[i] for i in perm_vals]
         total_size = np.prod(shape_out)
         leading_size = 1
         suffix = list(range(len(tmpshape)))
