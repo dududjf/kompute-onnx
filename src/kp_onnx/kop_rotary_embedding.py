@@ -40,9 +40,8 @@ void main() {
     out_tensor[out_offset] = in_tensor[in_offset];
 }
 """)
-        # 旋转嵌入计算的 Shader
-        # 交错模式和非交错模式拆成两个shader
-        self.shader_rotary = compile_source("""
+        # 旋转嵌入计算的 Shader - 交错模式
+        self.shader_rotary_interleaved = compile_source("""
 #version 450
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
@@ -57,10 +56,9 @@ layout(constant_id = 2) const float num_heads_f = 0;
 layout(constant_id = 3) const float head_size_f = 0;
 layout(constant_id = 4) const float rotary_dim_f = 0;
 layout(constant_id = 5) const float rotary_half_f = 0;
-layout(constant_id = 6) const float interleaved_f = 0;
-layout(constant_id = 7) const float input_seq_head_f = 0;
-layout(constant_id = 8) const float input_head_f = 0;
-layout(constant_id = 9) const float cos_sin_seq_f = 0;
+layout(constant_id = 6) const float input_seq_head_f = 0;
+layout(constant_id = 7) const float input_head_f = 0;
+layout(constant_id = 8) const float cos_sin_seq_f = 0;
 
 void main() {
     uint b = gl_GlobalInvocationID.x;
@@ -73,7 +71,6 @@ void main() {
     uint head_size = uint(head_size_f);
     uint rotary_dim = uint(rotary_dim_f);
     uint rotary_half = uint(rotary_half_f);
-    uint interleaved = uint(interleaved_f);
     uint input_seq_head = uint(input_seq_head_f);
     uint input_head = uint(input_head_f);
     uint cos_sin_seq = uint(cos_sin_seq_f);
@@ -82,45 +79,82 @@ void main() {
     uint input_base = b * input_seq_head + s * input_head + h * head_size;
     uint cos_sin_base = b * cos_sin_seq + s * rotary_half;
 
-    // 处理所有元素
-    if (interleaved == 1u) {
-        // 交错模式：在 0/1, 2/3, ... 上旋转
-        for (uint i = 0; i < rotary_half; ++i) {
-            float c = cos_data[cos_sin_base + i];
-            float sn = sin_data[cos_sin_base + i];
+    // 交错模式：在 0/1, 2/3, ... 上旋转
+    for (uint i = 0; i < rotary_half; ++i) {
+        float c = cos_data[cos_sin_base + i];
+        float sn = sin_data[cos_sin_base + i];
 
-            uint idx1 = input_base + (i << 1u);
-            uint idx2 = idx1 + 1u;
-            
-            float x1 = input_data[idx1];
-            float x2 = input_data[idx2];
+        uint idx1 = input_base + (i << 1u);
+        uint idx2 = idx1 + 1u;
+        
+        float x1 = input_data[idx1];
+        float x2 = input_data[idx2];
 
-            output_data[idx1] = c * x1 - sn * x2;
-            output_data[idx2] = sn * x1 + c * x2;
-        }
-        // 复制未旋转部分
-        for (uint i = rotary_dim; i < head_size; ++i) {
-            output_data[input_base + i] = input_data[input_base + i];
-        }
-    } else {
-        // 非交错模式：分别旋转前后两个 half
-        for (uint i = 0; i < rotary_half; ++i) {
-            float c = cos_data[cos_sin_base + i];
-            float sn = sin_data[cos_sin_base + i];
+        output_data[idx1] = c * x1 - sn * x2;
+        output_data[idx2] = sn * x1 + c * x2;
+    }
+    // 复制未旋转部分
+    for (uint i = rotary_dim; i < head_size; ++i) {
+        output_data[input_base + i] = input_data[input_base + i];
+    }
+}
+""")
+        # 旋转嵌入计算的 Shader - 非交错模式
+        self.shader_rotary_non_interleaved = compile_source("""
+#version 450
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-            uint idx1 = input_base + i;
-            uint idx2 = input_base + rotary_half + i;
-            
-            float x1 = input_data[idx1];
-            float x2 = input_data[idx2];
+layout(set=0, binding=0) readonly buffer InputBuf { float input_data[]; };
+layout(set=0, binding=1) readonly buffer CosBuf { float cos_data[]; };
+layout(set=0, binding=2) readonly buffer SinBuf { float sin_data[]; };
+layout(set=0, binding=3) writeonly buffer OutputBuf { float output_data[]; };
 
-            output_data[idx1] = c * x1 - sn * x2;
-            output_data[idx2] = sn * x1 + c * x2;
-        }
-        // 复制未旋转部分
-        for (uint i = rotary_dim; i < head_size; ++i) {
-            output_data[input_base + i] = input_data[input_base + i];
-        }
+layout(constant_id = 0) const float batch_f = 0;
+layout(constant_id = 1) const float seq_len_f = 0;
+layout(constant_id = 2) const float num_heads_f = 0;
+layout(constant_id = 3) const float head_size_f = 0;
+layout(constant_id = 4) const float rotary_dim_f = 0;
+layout(constant_id = 5) const float rotary_half_f = 0;
+layout(constant_id = 6) const float input_seq_head_f = 0;
+layout(constant_id = 7) const float input_head_f = 0;
+layout(constant_id = 8) const float cos_sin_seq_f = 0;
+
+void main() {
+    uint b = gl_GlobalInvocationID.x;
+    uint s = gl_GlobalInvocationID.y;
+    uint h = gl_GlobalInvocationID.z;
+
+    uint batch = uint(batch_f);
+    uint seq_len = uint(seq_len_f);
+    uint num_heads = uint(num_heads_f);
+    uint head_size = uint(head_size_f);
+    uint rotary_dim = uint(rotary_dim_f);
+    uint rotary_half = uint(rotary_half_f);
+    uint input_seq_head = uint(input_seq_head_f);
+    uint input_head = uint(input_head_f);
+    uint cos_sin_seq = uint(cos_sin_seq_f);
+
+    // 计算基址
+    uint input_base = b * input_seq_head + s * input_head + h * head_size;
+    uint cos_sin_base = b * cos_sin_seq + s * rotary_half;
+
+    // 非交错模式：分别旋转前后两个 half
+    for (uint i = 0; i < rotary_half; ++i) {
+        float c = cos_data[cos_sin_base + i];
+        float sn = sin_data[cos_sin_base + i];
+
+        uint idx1 = input_base + i;
+        uint idx2 = input_base + rotary_half + i;
+        
+        float x1 = input_data[idx1];
+        float x2 = input_data[idx2];
+
+        output_data[idx1] = c * x1 - sn * x2;
+        output_data[idx2] = sn * x1 + c * x2;
+    }
+    // 复制未旋转部分
+    for (uint i = rotary_dim; i < head_size; ++i) {
+        output_data[input_base + i] = input_data[input_base + i];
     }
 }
 """)
@@ -482,11 +516,17 @@ void main() {
         input_head = num_heads * head_size
         cos_sin_seq = seq_len * rotary_half
 
+        # 根据 interleaved 值选择对应的 shader
+        if self.interleaved == 1:
+            shader_rotary = self.shader_rotary_interleaved
+        else:
+            shader_rotary = self.shader_rotary_non_interleaved
+
         updated_algorithms.append(self.manager.algorithm(
             [input_tensor, cos_cache_tensor, sin_cache_tensor, output_4d_tensor],
-            self.shader_rotary,
+            shader_rotary,
             (batch, seq_len, num_heads),
-            [batch, seq_len, num_heads, head_size, rotary_dim, rotary_half, self.interleaved,
+            [batch, seq_len, num_heads, head_size, rotary_dim, rotary_half,
              input_seq_head, input_head, cos_sin_seq],
             []
         ))
