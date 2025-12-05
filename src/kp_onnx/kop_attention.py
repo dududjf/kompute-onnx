@@ -500,7 +500,7 @@ void main() {
             present_key_shape = K_shape
 
         if past_value is not None:
-            # Concatenate past_value with V along sequence dimension (axis=2)
+            # 将 past_value 与 V 沿序列维度（axis=2）进行拼接
             past_value_tensor, past_value_shape = past_value
             assert len(past_value_shape) == 4
             past_kv_seq_len_v = past_value_shape[2]
