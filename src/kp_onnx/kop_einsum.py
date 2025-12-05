@@ -6,12 +6,12 @@ from .shader_utils import compile_source, broadcast_to
 class EinsumOp:
     """
     将任意 einsum 表达式分解为基本操作序列：
-    - 对角线提取（用于重复下标）
-    - ReduceSum（用于收缩）
-    - Transpose（用于重新排列）
-    - Unsqueeze（用于广播）
-    - Mul（逐元素乘法）
-    - MatMul（用于高效收缩）
+    - 对角线提取
+    - ReduceSum
+    - Transpose
+    - Unsqueeze
+    - Mul
+    - MatMul
     """
 
     def __init__(self, manager: kp.Manager, equation: str = ""):
@@ -98,6 +98,27 @@ void main() {
     }
     
     out_data[outer * inner_size + inner] = sum;
+}
+""")
+        # 全局 ReduceSum 的专用 Shader（将整个张量求和为标量）
+        self.shader_reduce_all = compile_source("""
+#version 450
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout(binding = 0) readonly buffer InBuf { float in_data[]; };
+layout(binding = 1) writeonly buffer OutBuf { float out_data[]; };
+
+layout(constant_id = 0) const float total_size_f = 0;
+
+void main() {
+    uint total_size = uint(total_size_f);
+    
+    float sum = 0.0;
+    for (uint i = 0; i < total_size; ++i) {
+        sum += in_data[i];
+    }
+    
+    out_data[0] = sum;
 }
 """)
         # 单轴交换的转置 Shader
@@ -197,7 +218,9 @@ void main() {
     
     float sum = 0.0;
     for (uint k = 0; k < K; ++k) {
-        sum += in1[a_base + k] * in2[b_base + k * N];
+        sum += in1[a_base] * in2[b_base];
+        ++a_base;
+        b_base += N;
     }
     
     out_data[batch * out_batch_stride + row * N + col] = sum;
@@ -252,13 +275,13 @@ void main() {
                 out_tensor = self.manager.tensor(np.zeros(1, dtype=np.float32))
                 updated_tensors.append(out_tensor)
 
-                # 使用全局 reduce：视为 (1, total_size, 1)
+                # 使用专用的全局 reduce shader
                 workgroup = (1, 1, 1)
                 updated_algorithms.append(self.manager.algorithm(
                     [tensor, out_tensor],
-                    self.shader_reduce,
+                    self.shader_reduce_all,
                     workgroup,
-                    [1, total_size, 1],
+                    [total_size],
                     []
                 ))
 
@@ -479,7 +502,7 @@ void main() {
                         all(s in output_set for s in unshared2))
 
             if is_matmul:
-                # 使用优化的 matmul shader 进行缩约
+                # 使用 matmul shader 进行缩约
                 shape1 = input1['shape']
                 shape2 = input2['shape']
                 batch_subs = [s for s in subs1 if s in subs2 and s in output_set]
@@ -726,14 +749,14 @@ void main() {
                     new_subs = [current_subs[i] for i in range(len(current_subs)) if i not in remaining_indices]
                     current_tensor, current_shape, current_subs = out_tensor, new_shape, new_subs
 
-            # Determine which subscripts to keep
+            # 决定保留哪些下标
             other_subs = set()
             for other_sig in input_signatures:
                 if other_sig is not sig:
                     other_subs.update(other_sig['subscripts'])
             other_subs.update(output_subscripts)
 
-            # Reduce unused dimensions
+            # Reduce 没有使用到的维度
             current_tensor, current_shape, current_subs = reduce_unused(
                 current_tensor, current_shape, current_subs, other_subs
             )
