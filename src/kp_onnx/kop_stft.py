@@ -1,4 +1,3 @@
-from __future__ import annotations
 import kp
 import numpy as np
 from .shader_utils import compile_source
