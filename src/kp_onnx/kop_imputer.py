@@ -127,7 +127,6 @@ void main() {
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, shape_in = input_tensors[0]
 
-        # 根据属性判断使用 float 还是 int shader
         if self.imputed_value_floats is not None and len(self.imputed_value_floats) > 0:
             imputed_source = self.imputed_value_floats
             replaced_value = self.replaced_value_float
@@ -137,7 +136,7 @@ void main() {
             replaced_value = self.replaced_value_int64
             dtype = np.int32
         else:
-            assert False, "Imputed values must be provided."
+            raise "Imputed values must be provided."
 
         if isinstance(imputed_source, list):
             imputed_source = np.array(imputed_source, dtype=dtype)
