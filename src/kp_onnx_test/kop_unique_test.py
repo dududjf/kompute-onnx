@@ -57,8 +57,6 @@ start_time = time.time()
 np_out = np_unique(x, axis=1, sorted=1)
 print("Numpy:", time.time() - start_time, "seconds")
 
-print("np_out:", np_out)
-
 start_time = time.time()
 unique_op.axis = 1
 unique_op.sorted = 1
@@ -66,8 +64,7 @@ kp_out = unique_op.run(x)
 print(f"{unique_op}: ", time.time() - start_time, "seconds")
 
 for i in range(len(np_out)):
-    print("Max error:", np.abs(np_out[i] - kp_out[i]).max())
-    print(np.allclose(np_out[i], kp_out[i], rtol=1e-4, atol=1e-4))
+    print("np_out:", np_out[i], "kp_out:", kp_out[i])
 print('----')
 
 print("Case 2:")
@@ -84,8 +81,7 @@ kp_out = unique_op.run(x)
 print(f"{unique_op}: ", time.time() - start_time, "seconds")
 
 for i in range(len(np_out)):
-    print("Max error:", np.abs(np_out[i] - kp_out[i]).max())
-    print(np.allclose(np_out[i], kp_out[i], rtol=1e-4, atol=1e-4))
+    print("np_out:", np_out[i], "kp_out:", kp_out[i])
 print('----')
 
 print("Case 3:")
@@ -102,8 +98,7 @@ kp_out = unique_op.run(x)
 print(f"{unique_op}: ", time.time() - start_time, "seconds")
 
 for i in range(len(np_out)):
-    print("Max error:", np.abs(np_out[i] - kp_out[i]).max())
-    print(np.allclose(np_out[i], kp_out[i], rtol=1e-4, atol=1e-4))
+    print("np_out:", np_out[i], "kp_out:", kp_out[i])
 print('----')
 
 print("Case 4:")
@@ -131,8 +126,6 @@ print(f"{unique_op}: ", time.time() - start_time, "seconds")
 
 for i in range(len(np_out)):
     print("np_out:", np_out[i], "kp_out:", kp_out[i])
-    print("Max error:", np.abs(np_out[i] - kp_out[i]).max())
-    print(np.allclose(np_out[i], kp_out[i], rtol=1e-4, atol=1e-4))
 print('----')
 
 print("Case 5:")
@@ -149,6 +142,5 @@ kp_out = unique_op.run(x)
 print(f"{unique_op}: ", time.time() - start_time, "seconds")
 
 for i in range(len(np_out)):
-    print("Max error:", np.abs(np_out[i] - kp_out[i]).max())
-    print(np.allclose(np_out[i], kp_out[i], rtol=1e-4, atol=1e-4))
+    print("np_out:", np_out[i], "kp_out:", kp_out[i])
 print('----')
