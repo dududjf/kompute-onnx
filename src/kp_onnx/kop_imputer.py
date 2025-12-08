@@ -88,14 +88,21 @@ void main() {
         return self.__repr__()
 
     def run(self, *inputs):
-        # 根据属性判断输入数据类型
-        use_int = self.imputed_value_int64s is not None and len(self.imputed_value_int64s) > 0
-        dtype = np.int32 if use_int else np.float32
+        # 根据属性判断输入数据类型（优先级：float > int64）
+        if self.imputed_value_floats is not None and len(self.imputed_value_floats) > 0:
+            dtype = np.float32
+        elif self.imputed_value_int64s is not None and len(self.imputed_value_int64s) > 0:
+            dtype = np.int32
+        else:
+            dtype = np.float32
         
         input_tensors = []
         for inp in inputs:
             numpy_in = inp.reshape(-1).astype(dtype)
-            tensor = self.manager.tensor(numpy_in)
+            if dtype == np.int32:
+                tensor = self.manager.tensor_t(numpy_in)
+            else:
+                tensor = self.manager.tensor(numpy_in)
             input_tensors.append((tensor, list(inp.shape)))
 
         updated_algorithms, updated_tensors = [], []
@@ -121,7 +128,6 @@ void main() {
         tensor_in, shape_in = input_tensors[0]
 
         # 根据属性判断使用 float 还是 int shader
-        use_int = False
         if self.imputed_value_floats is not None and len(self.imputed_value_floats) > 0:
             imputed_source = self.imputed_value_floats
             replaced_value = self.replaced_value_float
@@ -130,7 +136,6 @@ void main() {
             imputed_source = self.imputed_value_int64s
             replaced_value = self.replaced_value_int64
             dtype = np.int32
-            use_int = True
         else:
             assert False, "Imputed values must be provided."
 
@@ -149,17 +154,28 @@ void main() {
         else:
             imputed_expanded = imputed_source.astype(dtype)
         
-        tensor_imputed = self.manager.tensor(imputed_expanded)
-        updated_tensors.append(tensor_imputed)
+        if dtype == np.int32:
+            tensor_imputed = self.manager.tensor_t(imputed_expanded)
+            updated_tensors.append(tensor_imputed)
 
-        tensor_replaced = self.manager.tensor(np.array([replaced_value], dtype=dtype))
-        updated_tensors.append(tensor_replaced)
+            tensor_replaced = self.manager.tensor_t(np.array([replaced_value], dtype=np.int32))
+            updated_tensors.append(tensor_replaced)
 
-        tensor_out = self.manager.tensor(np.zeros(n_rows * n_cols, dtype=dtype))
-        updated_tensors.append(tensor_out)
+            tensor_out = self.manager.tensor_t(np.zeros(n_rows * n_cols, dtype=np.int32))
+            updated_tensors.append(tensor_out)
 
-        # 选择对应的 shader
-        compiled_shader = self.compiled_shader_int if use_int else self.compiled_shader_float
+            compiled_shader = self.compiled_shader_int
+        else:
+            tensor_imputed = self.manager.tensor(imputed_expanded)
+            updated_tensors.append(tensor_imputed)
+
+            tensor_replaced = self.manager.tensor(np.array([replaced_value], dtype=np.float32))
+            updated_tensors.append(tensor_replaced)
+
+            tensor_out = self.manager.tensor(np.zeros(n_rows * n_cols, dtype=np.float32))
+            updated_tensors.append(tensor_out)
+
+            compiled_shader = self.compiled_shader_float
 
         updated_algorithms.append(self.manager.algorithm(
             [tensor_in, tensor_imputed, tensor_replaced, tensor_out],
