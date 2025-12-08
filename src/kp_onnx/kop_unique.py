@@ -217,28 +217,6 @@ void main()
             output = tensor.data().reshape(output_shape)
             output_list.append(output)
 
-        # Trim output based on actual unique count
-        if len(input_tensors[0][1]) > 0:
-            shape_in = input_tensors[0][1]
-            
-            # output_list order: [Y, indices, inverse, counts]
-            y, indices, inverse_map, counts = output_list
-            unique_count = int((counts > 0).sum())
-            
-            # Trim Y along the specified axis
-            if self.axis is not None:
-                axis = self.axis + len(shape_in) if self.axis < 0 else self.axis
-                slicer = [slice(None)] * y.ndim
-                slicer[axis] = slice(0, unique_count)
-                y = y[tuple(slicer)].copy()
-            else:
-                # axis=None: flatten and trim
-                y = y[:unique_count].copy()
-            
-            indices = indices[:unique_count].copy()
-            counts = counts[:unique_count].copy()
-            output_list = [y, indices, inverse_map, counts]
-
         for tensor, _ in input_tensors:
             del tensor
         del updated_tensors
@@ -310,8 +288,6 @@ void main()
             [size, leading, trailing],
             []
         ))
-
-        ##去尾shader
 
         return [(tensor_unique_out, shape_in), (tensor_indices_out, [size]),
                 (tensor_inverse_out, [size]), (tensor_counts_out, [size])]
