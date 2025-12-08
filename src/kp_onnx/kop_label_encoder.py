@@ -99,14 +99,23 @@ void main() {
         return self.__repr__()
 
     def run(self, *inputs):
-        # 根据属性判断输入数据类型
-        use_int = self.keys_int64s is not None and len(self.keys_int64s) > 0
-        dtype = np.int32 if use_int else np.float32
+        # 根据属性判断输入数据类型（优先级：tensor > float > int64）
+        if self.keys_tensor is not None and self.values_tensor is not None:
+            dtype = np.float32
+        elif self.keys_floats is not None and len(self.keys_floats) > 0:
+            dtype = np.float32
+        elif self.keys_int64s is not None and len(self.keys_int64s) > 0:
+            dtype = np.int32
+        else:
+            dtype = np.float32
         
         input_tensors = []
         for inp in inputs:
             numpy_in = inp.reshape(-1).astype(dtype)
-            tensor = self.manager.tensor(numpy_in)
+            if dtype == np.int32:
+                tensor = self.manager.tensor_t(numpy_in)
+            else:
+                tensor = self.manager.tensor(numpy_in)
             input_tensors.append((tensor, list(inp.shape)))
 
         updated_algorithms, updated_tensors = [], []
@@ -132,7 +141,6 @@ void main() {
         tensor_in, shape_in = input_tensors[0]
         
         # Determine which key-value pair to use (priority: tensor > float > int64 > string)
-        use_int = False
         if self.keys_tensor is not None and self.values_tensor is not None:
             keys = self.keys_tensor.astype(np.float32)
             values = self.values_tensor.astype(np.float32)
@@ -148,12 +156,11 @@ void main() {
             values = np.array(self.values_int64s, dtype=np.int32)
             default_value = self.default_int64
             dtype = np.int32
-            use_int = True
         elif self.keys_strings is not None and len(self.keys_strings) > 0:
             # String type not supported in GPU shader, fallback to CPU
-            assert False, "String keys are not supported in GPU implementation yet. Use CPU fallback."
+            raise "String keys are not supported in GPU implementation yet. Use CPU fallback."
         else:
-            assert False, "Keys must be provided."
+            raise "Keys must be provided."
         
         assert len(keys) == len(values), f"Keys and values must have the same length: {len(keys)} != {len(values)}"
         
@@ -161,19 +168,33 @@ void main() {
         total_size = int(np.prod(shape_in))
         
         # Create tensors for keys and values
-        tensor_keys = self.manager.tensor(keys)
-        updated_tensors.append(tensor_keys)
-        
-        tensor_values = self.manager.tensor(values)
-        updated_tensors.append(tensor_values)
-        
-        # Create output tensor
-        tensor_out = self.manager.tensor(np.zeros(total_size, dtype=dtype))
-        updated_tensors.append(tensor_out)
-        
-        # Select shader based on type
-        compiled_shader = self.compiled_shader_int if use_int else self.compiled_shader_float
-        
+        if dtype == np.int32:
+            tensor_keys = self.manager.tensor_t(keys)
+            updated_tensors.append(tensor_keys)
+
+            tensor_values = self.manager.tensor_t(values)
+            updated_tensors.append(tensor_values)
+
+            # Create output tensor
+            tensor_out = self.manager.tensor_t(np.zeros(total_size, dtype=np.int32))
+            updated_tensors.append(tensor_out)
+
+            # Select shader based on type
+            compiled_shader = self.compiled_shader_int
+        else:
+            tensor_keys = self.manager.tensor(keys)
+            updated_tensors.append(tensor_keys)
+
+            tensor_values = self.manager.tensor(values)
+            updated_tensors.append(tensor_values)
+
+            # Create output tensor
+            tensor_out = self.manager.tensor(np.zeros(total_size, dtype=np.float32))
+            updated_tensors.append(tensor_out)
+
+            # Select shader based on type
+            compiled_shader = self.compiled_shader_float
+
         # Create algorithm
         updated_algorithms.append(self.manager.algorithm(
             [tensor_in, tensor_keys, tensor_values, tensor_out],
