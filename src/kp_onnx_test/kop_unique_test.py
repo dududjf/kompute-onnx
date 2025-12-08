@@ -44,21 +44,108 @@ def np_unique(x, axis=None, sorted=None):
     return y, indices, inverse_indices, counts
 
 
-# x = np.random.random((32, 32, 8, 32)).astype(np.float32)
-
 print("Case 1:")
-x = [2, 1, 1, 3, 4, 3]
+x = np.array([[[3, 1],
+               [1, 2],
+               [5, 6]],
+
+              [[3, 1],
+               [1, 2],
+               [5, 6]]]).astype(np.float32)
 
 start_time = time.time()
-np_out = np_unique(x, sorted=0)
+np_out = np_unique(x, axis=1, sorted=1)
 print("Numpy:", time.time() - start_time, "seconds")
 
 print("np_out:", np_out)
 
 start_time = time.time()
+unique_op.axis = 1
+unique_op.sorted = 1
+kp_out = unique_op.run(x)
+print(f"{unique_op}: ", time.time() - start_time, "seconds")
+
+for i in range(len(np_out)):
+    print("Max error:", np.abs(np_out[i] - kp_out[i]).max())
+    print(np.allclose(np_out[i], kp_out[i], rtol=1e-4, atol=1e-4))
+print('----')
+
+print("Case 2:")
+x = np.array([[1, 0, 0], [1, 0, 0], [2, 3, 4]]).astype(np.float32)
+
+start_time = time.time()
+np_out = np_unique(x, axis=0, sorted=1)
+print("Numpy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+unique_op.axis = 0
+unique_op.sorted = 1
+kp_out = unique_op.run(x)
+print(f"{unique_op}: ", time.time() - start_time, "seconds")
+
+for i in range(len(np_out)):
+    print("Max error:", np.abs(np_out[i] - kp_out[i]).max())
+    print(np.allclose(np_out[i], kp_out[i], rtol=1e-4, atol=1e-4))
+print('----')
+
+print("Case 3:")
+x = np.array([[[1, 0, 0], [2, 0, 0], [2, 3, 4]], [[1, 0, 0], [1, 0, 0], [2, 3, 4]]]).astype(np.float32)
+
+start_time = time.time()
+np_out = np_unique(x, axis=1, sorted=1)
+print("Numpy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+unique_op.axis = 1
+unique_op.sorted = 1
+kp_out = unique_op.run(x)
+print(f"{unique_op}: ", time.time() - start_time, "seconds")
+
+for i in range(len(np_out)):
+    print("Max error:", np.abs(np_out[i] - kp_out[i]).max())
+    print(np.allclose(np_out[i], kp_out[i], rtol=1e-4, atol=1e-4))
+print('----')
+
+print("Case 4:")
+x = np.array([[[1, 2, 3],
+               [4, 5, 6],
+               [7, 8, 9]],
+
+              [[10, 11, 12],
+               [13, 14, 15],
+               [16, 17, 18]],
+
+              [[19, 20, 21],
+               [22, 23, 24],
+               [25, 26, 27]]]).astype(np.float32)
+
+start_time = time.time()
+np_out = np_unique(x, axis=-2, sorted=1)
+print("Numpy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+unique_op.axis = -2
+unique_op.sorted = 1
+kp_out = unique_op.run(x)
+print(f"{unique_op}: ", time.time() - start_time, "seconds")
+
+for i in range(len(np_out)):
+    print("np_out:", np_out[i], "kp_out:", kp_out[i])
+    print("Max error:", np.abs(np_out[i] - kp_out[i]).max())
+    print(np.allclose(np_out[i], kp_out[i], rtol=1e-4, atol=1e-4))
+print('----')
+
+print("Case 5:")
+x = np.random.random((8, 8, 8, 16)).astype(np.float32)
+
+start_time = time.time()
+np_out = np_unique(x, axis=None, sorted=1)
+print("Numpy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
 unique_op.axis = None
-unique_op.sorted = 0
-kp_out = unique_op.run(x)[0]
+unique_op.sorted = 1
+kp_out = unique_op.run(x)
 print(f"{unique_op}: ", time.time() - start_time, "seconds")
 
 for i in range(len(np_out)):
