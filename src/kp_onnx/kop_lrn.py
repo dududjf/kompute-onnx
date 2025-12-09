@@ -15,51 +15,53 @@ class LRNOp:
 layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
 layout(binding=0) buffer buf_in_tensor    { float in_tensor[]; };
 layout(binding=1) buffer buf_out_tensor   { float out_tensor[]; };
-layout(constant_id=0) const float batch_size_f   = 0;
-layout(constant_id=1) const float channel_size_f = 0; 
-layout(constant_id=2) const float spatial_size_f = 0;
-layout(constant_id=3) const float alpha_f        = 0;
-layout(constant_id=4) const float beta_f         = 0;
-layout(constant_id=5) const float bias_f         = 0;
-layout(constant_id=6) const float size_f         = 0;
+
+layout(constant_id=0) const float batch_dim_f      = 0;
+layout(constant_id=1) const float channel_dim_f    = 0; 
+layout(constant_id=2) const float spatial_dim_f    = 0;
+layout(constant_id=3) const float alpha_div_size_f = 0;
+layout(constant_id=4) const float beta_f           = 0;
+layout(constant_id=5) const float bias_f           = 0;
+layout(constant_id=6) const float pad_before_f     = 0;
+layout(constant_id=7) const float pad_after_f      = 0;
 
 void main() {
-    uint s = gl_GlobalInvocationID.x; 
-    uint c = gl_GlobalInvocationID.y; 
-    uint b = gl_GlobalInvocationID.z; 
-    uint minc = uint(channel_size_f); 
-    uint size = uint(size_f);
-    uint S    = uint(spatial_size_f);
+    uint spatial_idx = gl_GlobalInvocationID.x; 
+    uint channel_idx = gl_GlobalInvocationID.y; 
+    uint batch_idx   = gl_GlobalInvocationID.z; 
 
-    uint c1 = (size - 1) / 2;
-    uint c2 = (size / 2) + 1;
+    uint channel_dim = uint(channel_dim_f); 
+    uint spatial_dim = uint(spatial_dim_f);
+
+    uint pad_before  = uint(pad_before_f);
+    uint pad_after   = uint(pad_after_f);
 
     uint begin = 0;
-    if (c >= c1) {
-        begin = c - c1;
+    if (channel_idx >= pad_before) {
+        begin = channel_idx - pad_before;
     }
 
-    uint end = c + c2;
-    if (end > minc) {
-        end = minc;
+    uint end = channel_idx + pad_after;
+    if (end > channel_dim) {
+        end = channel_dim;
     }
 
-    uint batch_pitch = minc * S;
-    uint base_offset = b * batch_pitch + s;
+    uint batch_pitch = channel_dim * spatial_dim;
+    uint base_offset = batch_idx * batch_pitch + spatial_idx;
 
     float sum_sq = 0.0;
-    uint read_idx = base_offset + begin * S;
+    uint read_idx = base_offset + begin * spatial_dim;
 
     for (uint k = begin; k < end; ++k) {
         float val = in_tensor[read_idx];
         sum_sq += val * val;
-        read_idx += S;
+        read_idx += spatial_dim;
     }
 
-    uint curr_idx = base_offset + c * S;
+    uint curr_idx = base_offset + channel_idx * spatial_dim;
     float val_x = in_tensor[curr_idx];
 
-    float denom_base = bias_f + (alpha_f / size_f) * sum_sq;
+    float denom_base = bias_f + alpha_div_size_f * sum_sq;
     float denom = pow(denom_base, beta_f);
 
     out_tensor[curr_idx] = val_x / denom;
@@ -101,13 +103,9 @@ void main() {
     def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
              updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, shape_in = input_tensors[0]
-        alpha = self.alpha
-        beta = self.beta
-        bias = self.bias
-        size = self.size
 
         assert len(shape_in) == 4, f"LRN only applies on 4D tensors but got shape={shape_in}"
-        assert size > 0, "LRNOp.size must be > 0"
+        assert self.size > 0, "LRNOp.size must be > 0"
 
         batch_size = shape_in[0]
         channel_size = shape_in[1]
@@ -117,24 +115,25 @@ void main() {
         tensor_out = self.manager.tensor(np.zeros((total_size,), dtype=np.float32))
         updated_tensors.append(tensor_out)
 
-        groups_x = spatial_size
-        groups_y = channel_size
-        groups_z = batch_size
+        pad_before = (self.size - 1) // 2
+        pad_after = (self.size // 2) + 1
+        alpha_div_size = self.alpha / self.size
 
         params = [
             batch_size,
             channel_size,
             spatial_size,
-            alpha,
-            beta,
-            bias,
-            size
+            alpha_div_size,
+            self.beta,
+            self.bias,
+            pad_before,
+            pad_after
         ]
 
         updated_algorithms.append(self.manager.algorithm(
             [tensor_in, tensor_out],
             self.compiled_shader,
-            (groups_x, groups_y, groups_z),
+            (spatial_size, channel_size, batch_size),
             params,
             []
         ))
