@@ -16,7 +16,6 @@ layout (binding = 0) buffer buf_in_x      { float in_x[]; };
 layout (binding = 1) buffer buf_in_window { float in_window[]; };
 layout (binding = 2) buffer buf_out_result { float out_result[]; };
 
-// 对应 ONNX 参数命名
 layout (constant_id = 0) const float x_len_f = 0;      // len(x)
 layout (constant_id = 1) const float hop_length_f = 0; // hop_length
 layout (constant_id = 2) const float window_size_f = 0;// window_size
@@ -81,7 +80,7 @@ void main()
 
         // 步骤 3: 加窗
         // 对应 ONNX: weighted_new_x = new_x * weights
-        // (注: ONNX 中 new_x 是由 pad_sliced_x 组成的序列)
+        // ONNX 中 new_x 是由 pad_sliced_x 组成的序列
         float weighted_new_x = pad_sliced_x;
 
         if (use_window == 1) {
@@ -107,6 +106,10 @@ void main()
 ''')
 
     def __repr__(self):
+        device_name = self.manager.get_device_properties()['device_name']
+        return f"STFTOp({device_name})"
+
+    def __str__(self):
         device_name = self.manager.get_device_properties()['device_name']
         return f"STFTOp({device_name})"
 
