@@ -87,11 +87,21 @@ void main() {
     def __str__(self):
         return self.__repr__()
 
+    def set_imputed_values(self, imputed_value_floats=None, imputed_value_int64s=None,
+                           replaced_value_float=None, replaced_value_int64=None):
+        """动态更新 Imputer 的属性，避免重新创建实例和重新编译 shader"""
+        if imputed_value_floats is not None:
+            self.imputed_value_floats = imputed_value_floats
+        if imputed_value_int64s is not None:
+            self.imputed_value_int64s = imputed_value_int64s
+        if replaced_value_float is not None:
+            self.replaced_value_float = replaced_value_float
+        if replaced_value_int64 is not None:
+            self.replaced_value_int64 = replaced_value_int64
+
     def run(self, *inputs):
         # 根据属性判断输入数据类型（优先级：float > int64）
-        if self.imputed_value_floats is not None and len(self.imputed_value_floats) > 0:
-            dtype = np.float32
-        elif self.imputed_value_int64s is not None and len(self.imputed_value_int64s) > 0:
+        if self.imputed_value_int64s is not None and len(self.imputed_value_int64s) > 0:
             dtype = np.int32
         else:
             dtype = np.float32
@@ -149,7 +159,7 @@ void main() {
 
         # 扩展 imputed_source 到 n_cols 大小（广播单值或直接使用）
         if len(imputed_source) == 1:
-            imputed_expanded = np.full(n_cols, imputed_source[0], dtype=dtype)
+            imputed_expanded = imputed_source[[0] * n_cols]
         else:
             imputed_expanded = imputed_source.astype(dtype)
         

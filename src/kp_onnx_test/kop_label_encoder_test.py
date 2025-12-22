@@ -7,8 +7,6 @@ device_id = 0
 mgr = Manager(device_id)
 print(mgr.get_device_properties())
 
-labelencoder_op = LabelEncoderOp(mgr)
-
 
 def np_label_encoder(
         x,
@@ -62,9 +60,7 @@ np_out = np_label_encoder(x, default_float=default_float, keys_floats=keys_float
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-labelencoder_op.default_float = default_float
-labelencoder_op.keys_floats = keys_floats
-labelencoder_op.values_floats = values_floats
+labelencoder_op = LabelEncoderOp(mgr, default_float=default_float, keys_floats=keys_floats, values_floats=values_floats)
 kp_out = labelencoder_op.run(x)[0]
 print(f"{labelencoder_op}: ", time.time() - start_time, "seconds")
 
@@ -84,9 +80,7 @@ np_out = np_label_encoder(x, default_float=default_float, keys_floats=keys_float
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-labelencoder_op.default_float = default_float
-labelencoder_op.keys_floats = keys_floats
-labelencoder_op.values_floats = values_floats
+labelencoder_op.set_keys_values(default_float=default_float, keys_floats=keys_floats, values_floats=values_floats)
 kp_out = labelencoder_op.run(x)[0]
 print(f"{labelencoder_op}: ", time.time() - start_time, "seconds")
 
@@ -106,11 +100,7 @@ np_out = np_label_encoder(x, default_int64=default_int64, keys_int64s=keys_int64
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-labelencoder_op.keys_floats = None
-labelencoder_op.values_floats = None
-labelencoder_op.default_int64 = default_int64
-labelencoder_op.keys_int64s = keys_int64s
-labelencoder_op.values_int64s = values_int64s
+labelencoder_op.set_keys_values(default_int64=default_int64, keys_int64s=keys_int64s, values_int64s=values_int64s)
 kp_out = labelencoder_op.run(x.astype(np.float32))[0]
 print(f"{labelencoder_op}: ", time.time() - start_time, "seconds")
 
@@ -130,9 +120,7 @@ np_out = np_label_encoder(x, default_float=default_float, keys_floats=keys_float
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-labelencoder_op.keys_floats = keys_floats
-labelencoder_op.values_floats = values_floats
-labelencoder_op.default_float = default_float
+labelencoder_op.set_keys_values(default_float=default_float, keys_floats=keys_floats, values_floats=values_floats)
 kp_out = labelencoder_op.run(x)[0]
 print(f"{labelencoder_op}: ", time.time() - start_time, "seconds")
 
@@ -152,12 +140,7 @@ np_out = np_label_encoder(x, default_int64=default_int64, keys_int64s=keys_int64
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-labelencoder_op.keys_floats = None
-labelencoder_op.values_floats = None
-labelencoder_op.default_float = None
-labelencoder_op.keys_int64s = keys_int64s
-labelencoder_op.values_int64s = values_int64s
-labelencoder_op.default_int64 = default_int64
+labelencoder_op.set_keys_values(default_int64=default_int64, keys_int64s=keys_int64s, values_int64s=values_int64s)
 kp_out = labelencoder_op.run(x)[0]
 print(f"{labelencoder_op}: ", time.time() - start_time, "seconds")
 
@@ -173,13 +156,11 @@ values_tensor = np.array([10.0, 20.0, 30.0], dtype=np.float32)
 default_tensor = np.array([-0.0], dtype=np.float32)
 
 start_time = time.time()
-np_out = np_label_encoder(x, default_float=default_float, keys_floats=keys_floats, values_floats=values_floats)
+np_out = np_label_encoder(x, default_tensor=default_tensor, keys_tensor=keys_tensor, values_tensor=values_tensor)
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-labelencoder_op.keys_floats = keys_floats
-labelencoder_op.values_floats = values_floats
-labelencoder_op.default_float = default_float
+labelencoder_op.set_keys_values(default_tensor=default_tensor, keys_tensor=keys_tensor, values_tensor=values_tensor)
 kp_out = labelencoder_op.run(x)[0]
 print(f"{labelencoder_op}: ", time.time() - start_time, "seconds")
 

@@ -54,8 +54,7 @@ np_out = onnx_imputer(x, imputed_value_floats=imputed_value_floats, replaced_val
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-imputer_op.imputed_value_floats = imputed_value_floats
-imputer_op.replaced_value_float = replaced_value_float
+imputer_op.set_imputed_values(imputed_value_floats=imputed_value_floats, replaced_value_float=replaced_value_float)
 kp_out = imputer_op.run(x)[0]
 print(f"{imputer_op}: ", time.time() - start_time, "seconds")
 
@@ -76,8 +75,7 @@ np_out = onnx_imputer(x, imputed_value_floats=imputed_value_floats, replaced_val
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-imputer_op.imputed_value_floats = imputed_value_floats
-imputer_op.replaced_value_float = replaced_value_float
+imputer_op.set_imputed_values(imputed_value_floats=imputed_value_floats, replaced_value_float=replaced_value_float)
 kp_out = imputer_op.run(x)[0]
 print(f"{imputer_op}: ", time.time() - start_time, "seconds")
 
@@ -98,8 +96,7 @@ np_out = onnx_imputer(x, imputed_value_floats=imputed_value_floats, replaced_val
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-imputer_op.imputed_value_floats = imputed_value_floats
-imputer_op.replaced_value_float = -1.0
+imputer_op.set_imputed_values(imputed_value_floats=imputed_value_floats, replaced_value_float=replaced_value_float)
 kp_out = imputer_op.run(x)[0]
 print(f"{imputer_op}: ", time.time() - start_time, "seconds")
 
@@ -122,10 +119,7 @@ np_out = onnx_imputer(x, imputed_value_int64s=imputed_value_int64s, replaced_val
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-imputer_op.imputed_value_floats = None
-imputer_op.replaced_value_float = None
-imputer_op.imputed_value_int64s = imputed_value_int64s
-imputer_op.replaced_value_int64 = replaced_value_int64
+imputer_op.set_imputed_values(imputed_value_floats=[], imputed_value_int64s=imputed_value_int64s, replaced_value_int64=replaced_value_int64)
 kp_out = imputer_op.run(x)[0]
 print(f"{imputer_op}: ", time.time() - start_time, "seconds")
 
@@ -148,10 +142,7 @@ np_out = onnx_imputer(x, imputed_value_int64s=imputed_value_int64s, replaced_val
 print("NumPy:", time.time() - start_time, "seconds")
 
 start_time = time.time()
-imputer_op.imputed_value_floats = None
-imputer_op.replaced_value_float = None
-imputer_op.imputed_value_int64s = imputed_value_int64s
-imputer_op.replaced_value_int64 = replaced_value_int64
+imputer_op.set_imputed_values(imputed_value_int64s=imputed_value_int64s, replaced_value_int64=replaced_value_int64)
 kp_out = imputer_op.run(x)[0]
 print(f"{imputer_op}: ", time.time() - start_time, "seconds")
 
