@@ -20,22 +20,26 @@ layout (binding = 1) buffer buf_idx_sorted { uint tensor_index_sorted[]; };
 layout (constant_id = 0) const float size_f = 0;
 layout (constant_id = 1) const float leading_f = 0;
 layout (constant_id = 2) const float trailing_f = 0;
-layout (constant_id = 3) const float k_f = 0;
-layout (constant_id = 4) const float j_f = 0;
+layout (constant_id = 3) const float stride_f = 0;
+layout (constant_id = 4) const float k_f = 0;
+layout (constant_id = 5) const float j_f = 0;
 
-bool lex_less(uint su, uint sv, uint size, uint leading, uint trailing)
+bool lex_less(uint su, uint sv, uint leading, uint trailing, uint stride)
 {
-    for (uint ld = 0, idx_u = su * trailing, idx_v = sv * trailing;
-         ld < leading;
-         ++ld, idx_u += size * trailing, idx_v += size * trailing) {
-        uint off_u = idx_u;
-        uint off_v = idx_v;
-        for (uint tt = 0; tt < trailing; ++tt, off_u++, off_v++) {
+    uint off_u = su * trailing;
+    uint off_v = sv * trailing;
+    uint jump = stride - trailing;  // 每完成一个 trailing 块后的跳跃量
+    
+    // 每个切片包含 leading个块, 每个块包含 trailing个连续元素
+    for (uint ld = 0; ld < leading; ++ld) {
+        for (uint t = 0; t < trailing; ++t, ++off_u, ++off_v) {
             float a = tensor_in[off_u];
             float b = tensor_in[off_v];
             if (a < b) return true;
             if (a > b) return false;
         }
+        off_u += jump;
+        off_v += jump;
     }
     return false;
 }
@@ -46,6 +50,7 @@ void main()
     uint size = uint(size_f);
     uint leading = uint(leading_f);
     uint trailing = uint(trailing_f);
+    uint stride = uint(stride_f);
     uint k = uint(k_f);
     uint j = uint(j_f);
     
@@ -55,14 +60,16 @@ void main()
     if (ixj > tid && ixj < size) {
         uint u = tensor_index_sorted[tid];
         uint v = tensor_index_sorted[ixj];
-        bool should_swap = lex_less(v, u, size, leading, trailing);
+        bool should_swap = lex_less(v, u, leading, trailing, stride);
         
         if ((tid & k) == 0) {
+            // 当前区间为升序
             if (should_swap) {
                 tensor_index_sorted[tid] = v;
                 tensor_index_sorted[ixj] = u;
             }
         } else {
+            // 当前区间为降序
             if (!should_swap) {
                 tensor_index_sorted[tid] = v;
                 tensor_index_sorted[ixj] = u;
@@ -72,52 +79,66 @@ void main()
 }
 """)
 
-        # 在排序后的索引数组中，找出所有唯一的 slice，统计每个 slice 的出现次数和首次出现的最小索引。
-        self.compiled_shader_detect_runs = compile_source("""
+        # 在排序后的索引数组中，并行比较相邻 slice，标记哪些位置是 head
+        # workgroup = (size, leading, trailing)
+        self.compiled_shader_compare_adjacent = compile_source("""
 #version 450
 layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
-// Inputs (readonly)
 layout (binding = 0) readonly buffer buf_input { float input_buf[]; };
 layout (binding = 1) readonly buffer buf_index_sorted { uint index_sorted[]; };
-
-// Outputs (writeonly or buffer for read-modify-write)
-layout (binding = 2) buffer buf_indices_out { uint indices_out[]; };
-layout (binding = 3) buffer buf_counts_out { uint counts_out[]; };
-layout (binding = 4) writeonly buffer buf_num_runs { uint num_runs_buf[]; };
+layout (binding = 2) buffer buf_is_head { uint is_head[]; };
 
 layout (constant_id = 0) const float size_f = 0;
 layout (constant_id = 1) const float leading_f = 0;
 layout (constant_id = 2) const float trailing_f = 0;
 
-bool slices_equal(uint su, uint sv, uint block, uint leading, uint trailing)
+void main()
 {
-    for (uint ld = 0, idx_u = su * trailing, idx_v = sv * trailing;
-         ld < leading;
-         ++ld, idx_u += block, idx_v += block) {
-        uint off_u = idx_u;
-        uint off_v = idx_v;
-        for (uint tt = 0; tt < trailing; ++tt, off_u++, off_v++) {
-            float a = input_buf[off_u];
-            float b = input_buf[off_v];
-            if (a != b) return false;
-        }
+    uint u = gl_GlobalInvocationID.x + 1;  // 从 1 开始，跳过第一个 slice
+    uint ld = gl_GlobalInvocationID.y;
+    uint tt = gl_GlobalInvocationID.z;
+    
+    uint size = uint(size_f);
+    uint leading = uint(leading_f);
+    uint trailing = uint(trailing_f);
+    uint stride = size * trailing;
+    
+    uint cur_idx = index_sorted[u];
+    uint prev_idx = index_sorted[u - 1];
+    
+    uint offset_cur = ld * stride + cur_idx * trailing + tt;
+    uint offset_prev = ld * stride + prev_idx * trailing + tt;
+    
+    if (input_buf[offset_cur] != input_buf[offset_prev]) {
+        atomicOr(is_head[u], 1);
     }
-    return true;
 }
+""")
+
+        # 根据 is_head 数组，统计 runs
+        self.compiled_shader_detect_runs = compile_source("""
+#version 450
+layout (local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+
+layout (binding = 0) readonly buffer buf_index_sorted { uint index_sorted[]; };
+layout (binding = 1) readonly buffer buf_is_head { uint is_head[]; };
+layout (binding = 2) buffer buf_indices_out { uint indices_out[]; };
+layout (binding = 3) buffer buf_counts_out { uint counts_out[]; };
+layout (binding = 4) writeonly buffer buf_num_runs { uint num_runs_buf[]; };
+
+layout (constant_id = 0) const float size_f = 0;
 
 void main()
 {
     uint size = uint(size_f);
-    uint leading = uint(leading_f);
-    uint trailing = uint(trailing_f);
-
+    
     uint num_runs = 0;
     for (uint u = 0; u < size; ++u) {
         uint cur_idx = index_sorted[u];
-        bool is_head = (u == 0) ? true : !slices_equal(cur_idx, index_sorted[u - 1], size * trailing, leading, trailing);
+        bool is_head_flag = (is_head[u] != 0);
         
-        if (is_head) {
+        if (is_head_flag) {
             indices_out[num_runs] = cur_idx;
             counts_out[num_runs] = 1;
             num_runs++;
@@ -152,11 +173,11 @@ layout (constant_id = 0) const float size_f = 0;
 layout (constant_id = 1) const float leading_f = 0;
 layout (constant_id = 2) const float trailing_f = 0;
 
-void copy_slice_tr(uint s_from, uint s_to, uint tr, uint size, uint leading, uint trailing)
+void copy_slice_tr(uint s_from, uint s_to, uint tr, uint stride, uint leading, uint trailing)
 {
-    for (uint ld = 0, src = s_from * trailing + tr, dst = s_to * trailing + tr;
-         ld < leading;
-         ++ld, src += size * trailing, dst += size * trailing) {
+    uint src = s_from * trailing + tr;
+    uint dst = s_to * trailing + tr;
+    for (uint ld = 0; ld < leading; ++ld, src += stride, dst += stride) {
         unique_out[dst] = input_buf[src];
     }
 }
@@ -168,6 +189,7 @@ void main()
     uint size = uint(size_f);
     uint leading = uint(leading_f);
     uint trailing = uint(trailing_f);
+    uint stride = size * trailing;
     
     uint num_runs = num_runs_buf[0];
     
@@ -175,7 +197,7 @@ void main()
     for (uint r = 0; r < num_runs; ++r) {
         uint run_len = counts_out[r];
         
-        copy_slice_tr(index_sorted[start], r, tr, size, leading, trailing);
+        copy_slice_tr(index_sorted[start], r, tr, stride, leading, trailing);
         
         if (tr == 0) {
             for (uint k = 0; k < run_len; ++k) {
@@ -248,6 +270,7 @@ void main()
         while n_pow2 < size:
             n_pow2 *= 2
         
+        stride = size * trailing
         k = 2
         while k <= n_pow2:
             j = k >> 1
@@ -256,7 +279,7 @@ void main()
                     [tensor_in, tensor_index_sorted],
                     self.compiled_shader_sort_indices,
                     (n_pow2, 1, 1),
-                    [size, leading, trailing, k, j],
+                    [size, leading, trailing, stride, k, j],
                     []
                 ))
                 j >>= 1
@@ -267,14 +290,26 @@ void main()
         tensor_counts_out = self.manager.tensor_t(np.zeros(size, dtype=np.uint32))
         tensor_inverse_out = self.manager.tensor_t(np.zeros(size, dtype=np.uint32))
         tensor_num_runs = self.manager.tensor_t(np.zeros(1, dtype=np.uint32))
-        updated_tensors.extend([tensor_unique_out, tensor_indices_out, tensor_counts_out, tensor_inverse_out, tensor_num_runs])
+        is_head_init = np.zeros(size, dtype=np.uint32)
+        is_head_init[0] = 1  # 第一个 slice 永远是 head
+        tensor_is_head = self.manager.tensor_t(is_head_init)
+        updated_tensors.extend([tensor_unique_out, tensor_indices_out, tensor_counts_out, tensor_inverse_out, tensor_num_runs, tensor_is_head])
         
-        # Step 2: Detect runs (single-threaded)
+        # Step 2a: Compare adjacent slices in parallel, workgroup = (size - 1, leading, trailing)
         updated_algorithms.append(self.manager.algorithm(
-            [tensor_in, tensor_index_sorted, tensor_indices_out, tensor_counts_out, tensor_num_runs],
+            [tensor_in, tensor_index_sorted, tensor_is_head],
+            self.compiled_shader_compare_adjacent,
+            (size - 1, leading, trailing),
+            [size, leading, trailing],
+            []
+        ))
+        
+        # Step 2b: Detect runs based on is_head array (single-threaded)
+        updated_algorithms.append(self.manager.algorithm(
+            [tensor_index_sorted, tensor_is_head, tensor_indices_out, tensor_counts_out, tensor_num_runs],
             self.compiled_shader_detect_runs,
             (1, 1, 1),
-            [size, leading, trailing],
+            [size],
             []
         ))
         
