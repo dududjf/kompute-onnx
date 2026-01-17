@@ -13,5 +13,5 @@
 7. 输入输出参数统一使用layout (std430, set = 0, binding = ?) readwrite buffer前缀。
 8. 算子参数必须是layout (std430, set = 0, binding = ?)中最后一个binding。
 9. 算子参数中必须包括各轴的最大坐标值，shader实现代码中必须判定当前各轴坐标不会超过对应轴的最大坐标值。
-10. 算子的调用接口不变，基本函数还是__init__、__repr__、__str__、run和fuse，因此原来的测例文件只需要将kp_onnx目录的import改成kp_onnx_ssbo目录的import即可运行。
-11. __str__函数不再需要额外定义，只需要在代码中统一使用__str = __repr__来定义。
+10. 算子的调用接口不变，基本函数还是__init__、\_\_repr\_\_ 、\_\_str\_\_、run 和 fuse，因此原来的测例文件只需要将kp_onnx目录的import改成kp_onnx_ssbo目录的import即可运行。
+11. __str__函数不再需要额外定义，只需要在代码中统一使用\_\_str\_\_ = \_\_repr\_\_来定义。
