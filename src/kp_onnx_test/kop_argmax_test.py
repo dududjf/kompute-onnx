@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_argmax import ArgMaxOp
+from kp_onnx_ssbo.kop_argmax import ArgMaxOp
 
 
 def numpy_argmax(x: np.ndarray, axis: int = 0, keepdims=True, select_last_index=False) -> np.ndarray:

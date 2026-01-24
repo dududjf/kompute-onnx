@@ -1,7 +1,7 @@
 import time
 import numpy as np
 from kp import Manager
-from kp_onnx.kop_dropout import DropoutOp
+from kp_onnx_ssbo.kop_dropout import DropoutOp
 
 
 def dropout_numpy(x, ratio=0.5, training_mode=False, seed=None):

@@ -42,10 +42,6 @@ start_time = time.time()
 np_out = _run(data1, data2, inputdimensions=inputdimensions)
 print("Numpy:", time.time() - start_time, "seconds")
 
-print("data1:", data1)
-print("data2:", data2)
-print("np_out:", np_out)
-
 start_time = time.time()
 feature_vectorizer_op.inputdimensions = inputdimensions
 kp_out = feature_vectorizer_op.run(data1, data2)[0]

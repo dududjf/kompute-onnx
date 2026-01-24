@@ -1,7 +1,7 @@
 import time
 import numpy as np
 from kp import Manager
-from kp_onnx.kop_array_feature_extractor import ArrayFeatureExtractorOp
+from kp_onnx_ssbo.kop_array_feature_extractor import ArrayFeatureExtractorOp
 
 device_id = 0
 mgr = Manager(device_id)

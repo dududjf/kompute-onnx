@@ -1,9 +1,7 @@
-import random
-
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_affine_grid import AffineGridOp
+from kp_onnx_ssbo.kop_affine_grid import AffineGridOp
 
 # Device
 device_id = 0

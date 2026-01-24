@@ -162,10 +162,6 @@ start_time = time.time()
 kp_out = col2im_op.run(data, image_shape, block_shape)[0]
 print(f"{col2im_op}:", time.time() - start_time, "seconds")
 
-print("data:", data)
-print("np_out", np_out)
-print("kp_out", kp_out)
-
 print(f"Input shape: {data.shape}, Output shape: {kp_out.shape}")
 print("Y allclose:", np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("Max error:", np.abs(np_out - kp_out).max())

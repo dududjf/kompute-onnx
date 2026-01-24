@@ -1,30 +1,30 @@
 import numpy as np
 import kp
-from .shader_utils import compile_source
+from .shader_utils import compile_source, LOCAL_X_2D, LOCAL_Y_2D, LOCAL_X_3D, LOCAL_Y_3D, LOCAL_Z_3D
 
 
 class AffineGridOp:
     def __init__(self, manager: kp.Manager, align_corners=0):
         self.manager = manager
         self.align_corners = align_corners
-        self.compiled_shader_transpose = compile_source("""
+        self.compiled_shader_transpose = compile_source(f"""
 #version 450
-layout(local_size_x=1, local_size_y=1, local_size_z=1) in;
+layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
-layout(binding=0) readonly  buffer InBuf  { float in_buf[];  };
-layout(binding=1) writeonly buffer OutBuf { float out_buf[]; };
-layout(constant_id = 0) const float pre_block_size_f = 0;
-layout(constant_id = 1) const float post_block_size_f = 0;
-layout(constant_id = 2) const float axis_dimension_f = 0;
+layout (std430, set = 0, binding = 0) readonly  buffer InBuf  {{ float in_buf[];  }};
+layout (std430, set = 0, binding = 1) writeonly buffer OutBuf {{ float out_buf[]; }};
+layout (std430, set = 0, binding = 2) readonly  buffer UIParams {{ uint params[]; }};
+layout (constant_id = 0) const float pre_block_size_f = 0;
+layout (constant_id = 1) const float post_block_size_f = 0;
+layout (constant_id = 2) const float axis_dimension_f = 0;
 
-void main() {
+void main() 
+{{
+    uint leading_size = params[0], pre_block_size = params[1], axis_dimension = params[2], post_block_size = params[3];
     uint gx = gl_GlobalInvocationID.x;
     uint gy = gl_GlobalInvocationID.y;
     uint gz = gl_GlobalInvocationID.z;
-
-    uint pre_block_size = uint(pre_block_size_f);
-    uint post_block_size = uint(post_block_size_f);
-    uint axis_dimension = uint(axis_dimension_f);
+    if(gx >= leading_size || gy >= pre_block_size || gz >= axis_dimension) return;
 
     uint stride_y = axis_dimension * post_block_size;
     uint stride_x = pre_block_size * stride_y;
@@ -33,61 +33,54 @@ void main() {
 
     for(uint i = 0; i < post_block_size; ++i, ++out_index, ++in_index)
         out_buf[out_index] = in_buf[in_index];
-}""")
+}}""")
 
-        self.compiled_shader_matmul = compile_source("""
+        self.compiled_shader_matmul = compile_source(f"""
 #version 450
-layout (local_size_x = 1, local_size_y = 1) in;
+layout (local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
 
-layout (binding = 0) readonly buffer buf_in_tensor_1 { float in_tensor_1[]; };
-layout (binding = 1) readonly buffer buf_in_tensor_2 { float in_tensor_2[]; };
-layout (binding = 2) writeonly buffer buf_out_tensor { float out_tensor[]; };
-layout (constant_id = 0) const float size_k_f = 0;
-layout (constant_id = 1) const float size_n_f = 0;
+layout (std430, set = 0, binding = 0) readonly  buffer InBuf1 {{ float in_tensor_1[]; }};
+layout (std430, set = 0, binding = 1) readonly  buffer InBuf2 {{ float in_tensor_2[]; }};
+layout (std430, set = 0, binding = 2) writeonly buffer OutBuf {{ float out_tensor[]; }};
+layout (std430, set = 0, binding = 3) readonly  buffer UIParams {{ uint params[]; }};
 
 void main()
-{
+{{
+    uint size_m = params[0], size_n = params[1], size_k = params[2];
     uint row = gl_GlobalInvocationID.x;
     uint col = gl_GlobalInvocationID.y;
-    uint size_k = uint(size_k_f);
-    uint size_n = uint(size_n_f);
+    if (row >= size_m ||  col >= size_n) return;
     float acc = 0.0;
     uint start_1 = row * size_k;
     for(uint i = 0, start_2 = col; i < size_k; i++, start_1++, start_2 += size_n)
         acc += in_tensor_1[start_1] * in_tensor_2[start_2];
     out_tensor[row * size_n + col] = acc;
-}
+}}
 """)
-        self.compile_shader_stack = compile_source("""
+
+        self.compile_shader_stack = compile_source(f"""
 #version 450
-layout(local_size_x = 1, local_size_y = 1) in;
+layout(local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
 
-layout(binding = 0) readonly  buffer in_buf  { float in_tensor[];  };
-layout(binding = 1) writeonly buffer out_buf { float out_tensor[]; };
+layout(std430, set = 0, binding = 0) readonly  buffer InBuf  {{ float in_tensor[];  }};
+layout(std430, set = 0, binding = 1) writeonly buffer OutBuf {{ float out_tensor[]; }};
+layout(std430, set = 0, binding = 2) readonly  buffer UIParams {{ uint params[]; }};
 
-layout(constant_id = 0) const float axis_dim_f = 0.0;
-layout(constant_id = 1) const float block_size_f = 0.0;
-layout(constant_id = 2) const float out_axis_offset_f = 0.0;
-layout(constant_id = 3) const float out_axis_dim_f = 0.0;
-layout(constant_id = 4) const float group_count_f = 0.0;
-
-void main() {
+void main()
+{{
+    uint group_count = params[0], axis_dim = params[1], block_size = params[2];
+    uint out_axis_offset = params[3], out_axis_dim = params[4];
     uint gx = gl_GlobalInvocationID.x;
     uint gy = gl_GlobalInvocationID.y;
-
-    uint axis_dim = uint(axis_dim_f);
-    uint block_size = uint(block_size_f);
-    uint out_axis_offset = uint(out_axis_offset_f);
-    uint out_axis_dim = uint(out_axis_dim_f);
-    uint group_count = uint(group_count_f);
+    if(gx >= group_count || gy >= axis_dim) return;
 
     uint in_offset = gx * axis_dim * block_size + gy * block_size;
     uint out_offset = gx * out_axis_dim * block_size + (out_axis_offset + gy) * block_size;
 
-    for (uint i = 0; i < block_size; ++i, ++in_offset, ++out_offset) {
+    for (uint i = 0; i < block_size; ++i, ++in_offset, ++out_offset) {{
         out_tensor[out_offset] = in_tensor[in_offset];
-    }
-}
+    }}
+}}
 """)
 
     def __repr__(self):
@@ -190,10 +183,15 @@ void main() {
         offset = 0
         for tensor, shape in stack_tensors:
             axis_dim = shape[-1]
-            workgroup = (group_count, axis_dim, 1)
-            consts = [axis_dim, block_size, offset, shape_out[-1], group_count]
-            updated_algorithms.append(self.manager.algorithm([tensor, tensor_concat], self.compile_shader_stack,
-                                                             workgroup, consts, []))
+            params = [group_count, axis_dim, block_size, offset, shape_out[-1]]
+            param_in = self.manager.tensor_t(np.array(params, dtype=np.uint32), kp.TensorTypes.device)
+            self.manager.sequence().record(kp.OpTensorSyncDevice([param_in])).eval()
+            group_x = (group_count + LOCAL_X_2D - 1) // LOCAL_X_2D
+            group_y = (axis_dim + LOCAL_Y_2D - 1) // LOCAL_Y_2D
+            workgroup = (group_x, group_y, 1)
+            updated_algorithms.append(self.manager.algorithm([tensor, tensor_concat, param_in],
+                                                             self.compile_shader_stack,
+                                                             workgroup))
             offset += axis_dim
 
         if len(shape_out) == 3:  # 2D case
@@ -232,12 +230,17 @@ void main() {
                 pre_block_size = shape[suffix[0]]
                 post_block_size = 1
                 axis_dimension = shape_out[i]
-                workgroup = (leading_size, pre_block_size, axis_dimension)
-                updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out],
+
+                params = [leading_size, pre_block_size, axis_dimension, post_block_size]
+                param_in = self.manager.tensor_t(np.array(params, dtype=np.uint32), kp.TensorTypes.device)
+                self.manager.sequence().record(kp.OpTensorSyncDevice([param_in])).eval()
+                group_x = (leading_size + LOCAL_X_3D - 1) // LOCAL_X_3D
+                group_y = (pre_block_size + LOCAL_Y_3D - 1) // LOCAL_Y_3D
+                group_z = (axis_dimension + LOCAL_Z_3D - 1) // LOCAL_Z_3D
+                workgroup = (group_x, group_y, group_z)
+                updated_algorithms.append(self.manager.algorithm([tensor_in, tensor_out, param_in],
                                                                  self.compiled_shader_transpose,
-                                                                 workgroup,
-                                                                 [pre_block_size, post_block_size, axis_dimension],
-                                                                 []))
+                                                                 workgroup))
                 updated_tensors.append(tensor_out)
             suffix.remove(perm_vals[i])
             leading_size *= shape_out[i]
@@ -249,11 +252,16 @@ void main() {
         ncols = grid_shape[1]
 
         tensor_out = self.manager.tensor(np.zeros(rows * ncols, dtype=np.float32))
-
         updated_tensors.append(tensor_out)
-        updated_algorithms.append(self.manager.algorithm([theta_tensor, grid_tensor, tensor_out],
+
+        params = [rows, ncols, cols]
+        param_in = self.manager.tensor_t(np.array(params, dtype=np.uint32), kp.TensorTypes.device)
+        self.manager.sequence().record(kp.OpTensorSyncDevice([param_in])).eval()
+        group_x = (rows + LOCAL_X_2D - 1) // LOCAL_X_2D
+        group_y = (ncols + LOCAL_Y_2D - 1) // LOCAL_Y_2D
+        workgroup = (group_x, group_y, 1)
+
+        updated_algorithms.append(self.manager.algorithm([theta_tensor, grid_tensor, tensor_out, param_in],
                                                          self.compiled_shader_matmul,
-                                                         (rows, ncols, 1),
-                                                         [cols, ncols],
-                                                         []))
+                                                         workgroup))
         return tensor_out

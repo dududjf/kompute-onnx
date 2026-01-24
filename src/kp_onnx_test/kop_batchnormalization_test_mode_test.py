@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_batchnormalization_test_mode import BatchNormalizationTestModeOp
+from kp_onnx_ssbo.kop_batchnormalization_test_mode import BatchNormalizationTestModeOp
 
 # Device
 device_id = 0
@@ -108,13 +108,13 @@ print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print("----")
 
-# -------- Case 3: data: 1D, training_mode: 0 --------
-print("Case 3: data: 1D training_mode: 0")
-x = np.random.random((16,)).astype(np.float32)
-scale = np.random.random((1,)).astype(np.float32)
-bias = np.random.random((1,)).astype(np.float32)
-mean = np.random.random((1,)).astype(np.float32)
-var = np.random.random((1,)).astype(np.float32)
+# -------- Case 3: data: 2D --------
+print("Case 3: data: 2D")
+x = np.random.random((64, 8)).astype(np.float32)
+scale = np.random.random((8,)).astype(np.float32)
+bias = np.random.random((8,)).astype(np.float32)
+mean = np.random.random((8,)).astype(np.float32)
+var = np.random.random((8,)).astype(np.float32)
 
 start_time = time.time()
 np_out = np_batch_norm_test(x, scale, bias, mean, var, epsilon=1e-05, momentum=0.9, training_mode=0)

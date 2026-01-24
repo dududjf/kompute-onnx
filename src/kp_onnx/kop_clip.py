@@ -86,7 +86,7 @@ void main() {
         max_val = float(input_tensors[2][0].data()) if len(input_tensors) > 2 else None
 
         if min_val is None and max_val is None:
-            return [(tensor_out, tensor_shape)]
+            return [(tensor_in, tensor_shape)]
 
         if min_val is not None and max_val is None:
             updated_tensors.append(tensor_out)

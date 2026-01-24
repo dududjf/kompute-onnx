@@ -1,7 +1,7 @@
 import numpy as np
 from kp import Manager
 import time
-from kp_onnx.kop_depth_to_space import DepthToSpaceOp
+from kp_onnx_ssbo.kop_depth_to_space import DepthToSpaceOp
 
 device_id = 0
 mgr = Manager(device_id)
@@ -45,11 +45,11 @@ def numpy_depth_to_space(data, blocksize=None, mode=None):
     return y
 
 
-x = np.random.random((32, 16, 512, 512)).astype(np.float32)
+x = np.random.random((2, 16, 512, 512)).astype(np.float32)
 
 print("Case 1: mode is 'DCR', blocksize is 4")
 start_time = time.time()
-np_out = numpy_depth_to_space(x, blocksize=4)
+np_out = numpy_depth_to_space(x, blocksize=4, mode="DCR")
 print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
@@ -62,13 +62,14 @@ print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
 print('----')
 
-print("Case 1: mode is 'CRD', blocksize is 4")
+print("Case 2: mode is 'CRD', blocksize is 4")
 start_time = time.time()
-np_out = numpy_depth_to_space(x, blocksize=4)
+np_out = numpy_depth_to_space(x, blocksize=4, mode="CRD")
 print("Numpy:", np_out.shape, time.time() - start_time, "seconds")
 
 start_time = time.time()
 depth_to_space_op.blocksize = 4
+depth_to_space_op.mode = "CRD"
 kp_out = depth_to_space_op.run(x)[0]
 print(f"{depth_to_space_op}: ", kp_out.shape, time.time() - start_time, "seconds")
 

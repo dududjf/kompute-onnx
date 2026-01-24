@@ -1,8 +1,7 @@
-# kp_onnx_test/kop_acos_test.py
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_acos import AcosOp
+from kp_onnx_ssbo.kop_acos import AcosOp
 
 device_id = 0
 mgr = Manager(device_id)
