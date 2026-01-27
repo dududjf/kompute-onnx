@@ -13,3 +13,6 @@ __pycache__/
 
 __init__.py
 
+temp_compare/
+
+onnx-mlir-einsum
