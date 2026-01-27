@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_argmin import ArgMinOp, DEFAULT_AXIS
+from kp_onnx_ssbo.kop_argmin import ArgMinOp, DEFAULT_AXIS
 
 
 def onnx_argmin(data, axis=0, keepdims=True, select_last_index=0):

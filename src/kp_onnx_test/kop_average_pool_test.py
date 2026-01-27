@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_average_pool import AveragePoolOp
+from kp_onnx_ssbo.kop_average_pool import AveragePoolOp
 
 
 def onnx_reference_average_pool(x, kernel_shape, strides, pads=None, auto_pad="", ceil_mode=0, count_include_pad=0, dilations=None):

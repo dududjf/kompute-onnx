@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_celu import CeluOp
+from kp_onnx_ssbo.kop_celu import CeluOp
 
 DEFAULT_ALPHA = 1.0
 

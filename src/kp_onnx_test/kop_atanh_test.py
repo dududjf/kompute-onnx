@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_atanh import AtanhOp
+from kp_onnx_ssbo.kop_atanh import AtanhOp
 
 device_id = 0
 mgr = Manager(device_id)

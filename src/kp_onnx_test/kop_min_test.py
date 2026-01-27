@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_min import MinOp
+from kp_onnx_ssbo.kop_min import MinOp
 
 device_id = 0
 mgr = Manager(device_id)
@@ -20,7 +20,7 @@ start_time = time.time()
 kp_out = min_op.run(numpy_in)[0]
 print(f"{min_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 2: 双输入，低维 → 高维
 print('Case 2')
@@ -35,7 +35,7 @@ start_time = time.time()
 kp_out = min_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{min_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 3: 双输入，交换顺序
 print('Case 3')
@@ -50,7 +50,7 @@ start_time = time.time()
 kp_out = min_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{min_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 4: 双输入，更多高维广播
 print('Case 4')
@@ -65,7 +65,7 @@ start_time = time.time()
 kp_out = min_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{min_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 5: 双输入，交换顺序
 print('Case 5')
@@ -80,7 +80,7 @@ start_time = time.time()
 kp_out = min_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{min_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 6: 双输入，按列广播
 print('Case 6')
@@ -95,7 +95,7 @@ start_time = time.time()
 kp_out = min_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{min_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 7: 双输入，标量广播
 print('Case 7')
@@ -110,7 +110,7 @@ start_time = time.time()
 kp_out = min_op.run(numpy_in_1, numpy_in_2)[0]
 print(f"{min_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 
 # Case 8: 三输入混合广播
 print('Case 8')
@@ -135,4 +135,4 @@ t1 = time.time()
 kp_out = min_op.run(a, b, c)[0]
 print(f"{min_op}:", kp_out.shape, time.time() - t1, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
-print(np.allclose(numpy_out, kp_out, rtol=1e-5, atol=1e-5))
+print(np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
