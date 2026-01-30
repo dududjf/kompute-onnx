@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_sign import SignOp
+from kp_onnx_ssbo.kop_sign import SignOp
 
 
 device_id = 0
