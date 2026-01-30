@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_ceil import CeilOp
+from kp_onnx_ssbo.kop_ceil import CeilOp
 
 
 device_id = 0
