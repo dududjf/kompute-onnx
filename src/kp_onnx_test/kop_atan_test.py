@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_atan import AtanOp
+from kp_onnx_ssbo.kop_atan import AtanOp
 
 
 device_id = 0
