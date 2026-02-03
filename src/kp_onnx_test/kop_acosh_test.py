@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_acosh import AcoshOp
+from kp_onnx_ssbo.kop_acosh import AcoshOp
 
 
 device_id = 0
