@@ -1,8 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_bitwise_not import BitwiseNotOp
-
+from kp_onnx_ssbo.kop_bitwise_not import BitwiseNotOp
 
 device_id = 0
 mgr = Manager(device_id)
@@ -25,6 +24,7 @@ kp_out_f32 = bitwise_not_op.run(numpy_in_f32)[0]
 print(f"{bitwise_not_op} float32:", time.time() - start_time, "seconds")
 
 print("float32 match:", np.allclose(numpy_out_f32, kp_out_f32, rtol=1e-4, atol=1e-4))
+
 
 #int32
 numpy_in_i32 = np.random.randint(-1000, 1000, 1024 * 1024)
