@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_selu import SeluOp
+from kp_onnx_ssbo.kop_selu import SeluOp
 
 DEFAULT_ALPHA = float(1.6732632423543772)
 DEFAULT_GAMMA = float(1.0507009873554805)

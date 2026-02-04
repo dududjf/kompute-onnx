@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_trilu import TriluOp, DEFAULT_K
+from kp_onnx_ssbo.kop_trilu import TriluOp, DEFAULT_K
 
 DEFAULT_UPPER = 1
 

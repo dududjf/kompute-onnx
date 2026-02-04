@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_eyelike import EyeLikeOp
+from kp_onnx_ssbo.kop_eyelike import EyeLikeOp
 
 DEFAULT_K = 0
 

@@ -1,7 +1,7 @@
 import kp
 import numpy as np
 import time
-from kp_onnx.kop_gemm import GemmOp
+from kp_onnx_ssbo.kop_gemm import GemmOp
 
 
 def onnx_reference_gemm(a, b, c=None, alpha=1.0, beta=1.0, transA=0, transB=0):
