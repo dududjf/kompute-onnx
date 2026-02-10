@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_sum import SumOp
+from kp_onnx_ssbo.kop_sum import SumOp
 
 
 device_id = 0
