@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_mul import MulOp
+from kp_onnx_ssbo.kop_mul import MulOp
 
 
 device_id = 0
