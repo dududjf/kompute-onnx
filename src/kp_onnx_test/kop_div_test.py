@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_div import DivOp
+from kp_onnx_ssbo.kop_div import DivOp
 
 
 device_id = 0
