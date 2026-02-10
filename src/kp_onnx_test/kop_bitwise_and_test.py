@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_bitwise_and import BitwiseAndOp
+from kp_onnx_ssbo.kop_bitwise_and import BitwiseAndOp
 
 
 device_id = 0
