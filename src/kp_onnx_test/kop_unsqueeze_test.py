@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_unsqueeze import UnsqueezeOp
+from kp_onnx_ssbo.kop_unsqueeze import UnsqueezeOp
 
 device_id = 0
 mgr = Manager(device_id)

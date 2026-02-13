@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_max_pool import MaxPoolOp
+from kp_onnx_ssbo.kop_max_pool import MaxPoolOp
 
 
 def onnx_reference_max_pool(x, kernel_shape, strides, pads=None, auto_pad="", ceil_mode=0, dilations=None):
@@ -595,3 +595,92 @@ print(f"{pool_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 print()
+
+# Case 17: 2D, 某个维度kernel=1, stride=1, padding=0，测试跳过该维度的池化（覆盖continue分支）
+print("Case 17: 2D, 某个维度kernel=1, stride=1, padding=0，测试跳过该维度的池化")
+numpy_in = np.random.uniform(-8, 8, (2, 3, 1024, 1024)).astype(np.float32)
+start_time = time.time()
+numpy_out = onnx_reference_max_pool(
+    numpy_in, kernel_shape=[3, 1], strides=[2, 1], pads=[1, 0, 1, 0], ceil_mode=0
+)
+print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
+
+start_time = time.time()
+pool_op.kernel_shape = [3, 1]
+pool_op.strides = [2, 1]
+pool_op.auto_pad = ""
+pool_op.ceil_mode = 0
+pool_op.dilations = None
+pool_op.pads = [1, 0, 1, 0]
+kp_out = pool_op.run(numpy_in)[0]
+print(f"{pool_op}:", kp_out.shape, time.time() - start_time, "seconds")
+print("Max error:", np.abs(numpy_out - kp_out).max())
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+print()
+
+# Case 18: 2D, 所有维度kernel=1, stride=1, padding=0，测试不进行任何池化（覆盖if not updated_algorithms分支）
+print("Case 18: 2D, 所有维度kernel=1, stride=1, padding=0，测试不进行任何池化")
+numpy_in = np.random.uniform(-8, 8, (2, 3, 1024, 1024)).astype(np.float32)
+start_time = time.time()
+numpy_out = onnx_reference_max_pool(
+    numpy_in, kernel_shape=[1, 1], strides=[1, 1], pads=[0, 0, 0, 0], ceil_mode=0
+)
+print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
+
+start_time = time.time()
+pool_op.kernel_shape = [1, 1]
+pool_op.strides = [1, 1]
+pool_op.auto_pad = ""
+pool_op.ceil_mode = 0
+pool_op.dilations = None
+pool_op.pads = [0, 0, 0, 0]
+kp_out = pool_op.run(numpy_in)[0]
+print(f"{pool_op}:", kp_out.shape, time.time() - start_time, "seconds")
+print("Max error:", np.abs(numpy_out - kp_out).max())
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+print()
+
+# Case 19: 1D, kernel=1, stride=1, padding=0，测试1D情况下不进行池化
+print("Case 19: 1D, kernel=1, stride=1, padding=0，测试1D情况下不进行池化")
+numpy_in = np.random.uniform(-8, 8, (2, 3, 4096)).astype(np.float32)
+start_time = time.time()
+numpy_out = onnx_reference_max_pool(
+    numpy_in, kernel_shape=[1], strides=[1], pads=[0, 0], ceil_mode=0
+)
+print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
+
+start_time = time.time()
+pool_op.kernel_shape = [1]
+pool_op.strides = [1]
+pool_op.auto_pad = ""
+pool_op.ceil_mode = 0
+pool_op.dilations = None
+pool_op.pads = [0, 0]
+kp_out = pool_op.run(numpy_in)[0]
+print(f"{pool_op}:", kp_out.shape, time.time() - start_time, "seconds")
+print("Max error:", np.abs(numpy_out - kp_out).max())
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+print()
+
+# Case 20: 3D, 部分维度跳过池化，测试复杂情况
+print("Case 20: 3D, 部分维度跳过池化，测试复杂情况")
+numpy_in = np.random.uniform(-8, 8, (2, 3, 64, 64, 64)).astype(np.float32)
+start_time = time.time()
+numpy_out = onnx_reference_max_pool(
+    numpy_in, kernel_shape=[1, 3, 1], strides=[1, 2, 1], pads=[0, 1, 0, 0, 1, 0], ceil_mode=0
+)
+print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
+
+start_time = time.time()
+pool_op.kernel_shape = [1, 3, 1]
+pool_op.strides = [1, 2, 1]
+pool_op.auto_pad = ""
+pool_op.ceil_mode = 0
+pool_op.dilations = None
+pool_op.pads = [0, 1, 0, 0, 1, 0]
+kp_out = pool_op.run(numpy_in)[0]
+print(f"{pool_op}:", kp_out.shape, time.time() - start_time, "seconds")
+print("Max error:", np.abs(numpy_out - kp_out).max())
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+print()
+

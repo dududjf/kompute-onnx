@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_mod import ModOp
+from kp_onnx_ssbo.kop_mod import ModOp
 
 
 def onnx_mod(a, b, fmod=0):
@@ -198,3 +198,14 @@ print(f"{mod_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("kp_out.atype:", kp_out[0].dtype)
+
+print('Case 13: 测试不支持的数据类型uint8，应该抛出TypeError异常')
+numpy_in_1 = np.random.randint(0, 255, size=(10,), dtype=np.uint8)
+numpy_in_2 = np.random.randint(1, 10, size=(10,), dtype=np.uint8)
+
+try:
+    kp_out = mod_op.run(numpy_in_1, numpy_in_2)[0]
+    print("错误：应该抛出TypeError异常，但没有抛出")
+except TypeError as e:
+    print(f"成功捕获TypeError异常: {e}")
+    print("测试通过：正确识别了不支持的数据类型")
