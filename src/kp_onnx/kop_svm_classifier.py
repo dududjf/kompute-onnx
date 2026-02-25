@@ -757,7 +757,8 @@ void main() {
 
         return outputs
 
-    def fuse(self, input_tensors, updated_algorithms, updated_tensors):
+    def fuse(self, input_tensors: list[tuple[kp.Tensor, list[int]]], updated_algorithms: list[kp.Algorithm],
+             updated_tensors: list[kp.Tensor]) -> list[tuple[kp.Tensor, list[int]]]:
         tensor_in, in_shape = input_tensors[0]
         n_samples = in_shape[0]
         feature_size = np.prod(in_shape[1:])

@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_svm_regressor import SVMRegressorOp
+from kp_onnx_ssbo.kop_svm_regressor import SVMRegressorOp
 
 
 # --------------------------
@@ -298,5 +298,21 @@ kp_out = svm_op.run(numpy_in)[0]
 print(f"{svm_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+print()
+
+# Case 6: SVC mode with unsupported kernel type — expects ValueError (line 278-280)
+print("Case 6: SVC mode with unsupported kernel type (expects ValueError)")
+numpy_in_6 = np.random.uniform(-1, 1, (16, 8)).astype(np.float32)
+svm_op.coefficients = np.random.uniform(-1, 1, (4,)).astype(np.float32)
+svm_op.kernel_params = [0.5, 0.0, 0]
+svm_op.kernel_type = "UNKNOWN_KERNEL"
+svm_op.n_supports = 4
+svm_op.rho = [0.0]
+svm_op.support_vectors = np.random.uniform(-1, 1, (4, 8)).astype(np.float32)
+try:
+    svm_op.run(numpy_in_6)
+    print("ERROR: expected ValueError was not raised!")
+except ValueError as e:
+    print(f"Correctly raised ValueError: {e}")
 print()
 

@@ -1,6 +1,6 @@
 from kp import Manager
 import numpy as np
-from kp_onnx.kop_optional_get_element import OptionalGetElementOp
+from kp_onnx_ssbo.kop_optional_get_element import OptionalGetElementOp
 
 device_id = 0
 mgr = Manager(device_id)
@@ -17,6 +17,7 @@ result = opt_get_op.run(numpy_in)
 print("Output shape:", result[0].shape)
 print("Output:", result[0])
 print("Match:", np.allclose(numpy_in, result[0]))
+print("Op repr:", opt_get_op)
 print()
 
 print("Case 2: Test assertion with empty inputs (should fail)")

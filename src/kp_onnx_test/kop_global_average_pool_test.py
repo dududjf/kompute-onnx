@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_global_average_pool import GlobalAveragePoolOp
+from kp_onnx_ssbo.kop_global_average_pool import GlobalAveragePoolOp
 
 # ONNX的GAP实现
 def onnx_gap(x: np.ndarray) -> np.ndarray:

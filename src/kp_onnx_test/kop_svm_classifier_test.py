@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_svm_classifier import SVMClassifierOp
+from kp_onnx_ssbo.kop_svm_classifier import SVMClassifierOp
 
 
 # --------------------------
@@ -682,7 +682,7 @@ print("Max score error:", np.abs(numpy_scores - kp_scores).max())
 print("Scores All close:", np.allclose(numpy_scores, kp_scores, rtol=1e-4, atol=1e-4))
 print()
 
-# Case 11: SVC mode with RBF kernel, probability coefficients and SOFTMAX post_transform
+# Case 11: SVC mode with probability coefficients and SOFTMAX post_transform
 print("Case 11: SVC mode with probability coefficients and SOFTMAX post_transform")
 numpy_in = np.random.uniform(-1, 1, (512, 256)).astype(np.float32)
 
@@ -713,3 +713,105 @@ print("Scores shape match:", kp_scores.shape == numpy_scores.shape)
 print("Max score error:", np.abs(numpy_scores - kp_scores).max())
 print("Scores All close:", np.allclose(numpy_scores, kp_scores, rtol=1e-4, atol=1e-4))
 print()
+
+# Case 12: SVC mode with classlabels_strings (triggers integer-index fallback at line 750)
+print("Case 12: SVC mode with RBF kernel and classlabels_strings (label index fallback)")
+numpy_in = np.random.uniform(-1, 1, (256, 64)).astype(np.float32)
+class_count_12 = 3
+vectors_per_class_12 = [16, 16, 16]
+vector_count_12 = sum(vectors_per_class_12)
+support_vectors_12 = np.random.uniform(-1, 1, (vector_count_12, 64)).astype(np.float32).reshape(-1)
+coefficients_12 = np.random.uniform(-1, 1, ((class_count_12 - 1), vector_count_12)).astype(np.float32).reshape(-1)
+kernel_params_12 = [0.5, 0.0, 0]
+rho_12 = [0.1, -0.05, 0.15]
+# classlabels_strings not None → line 750 branch: labels_lut_data = [0, 1, 2, ...]
+classlabels_strings_12 = ["cat", "dog", "bird"]
+# NumPy reference: 使用classlabels_ints=[0,1,2]驱动正确的class_count=3
+# ssbo版有classlabels_strings时退化为整数索引[0,1,2]，与此一致
+numpy_labels_ref12, numpy_scores_ref12 = onnx_reference_svm_classifier(
+    numpy_in,
+    classlabels_ints=[0, 1, 2],
+    coefficients=coefficients_12,
+    kernel_params=kernel_params_12,
+    kernel_type="RBF",
+    rho=rho_12,
+    support_vectors=support_vectors_12,
+    vectors_per_class=vectors_per_class_12,
+)
+start_time = time.time()
+svm_op.classlabels_ints = None
+svm_op.classlabels_strings = classlabels_strings_12
+svm_op.coefficients = coefficients_12
+svm_op.kernel_params = kernel_params_12
+svm_op.kernel_type = "RBF"
+svm_op.post_transform = "NONE"
+svm_op.prob_a = None
+svm_op.prob_b = None
+svm_op.rho = rho_12
+svm_op.support_vectors = support_vectors_12
+svm_op.vectors_per_class = vectors_per_class_12
+kp_labels, kp_scores = svm_op.run(numpy_in)
+print(f"{svm_op}:", kp_labels.shape, kp_scores.shape, time.time() - start_time, "seconds")
+print("Labels match (index):", np.array_equal(numpy_labels_ref12, kp_labels))
+print("Max score error:", np.abs(numpy_scores_ref12 - kp_scores).max())
+print("Scores All close:", np.allclose(numpy_scores_ref12, kp_scores, rtol=1e-4, atol=1e-4))
+print()
+
+# Case 13: SVM_LINEAR mode with classlabels_strings (triggers integer-index fallback at line 827)
+print("Case 13: SVM_LINEAR mode with classlabels_strings (label index fallback)")
+numpy_in_13 = np.random.uniform(-1, 1, (100, 32)).astype(np.float32)
+class_count_13 = 3
+coefficients_13 = np.random.uniform(-1, 1, (class_count_13, 32)).astype(np.float32).reshape(-1)
+rho_13 = [0.5]
+classlabels_strings_13 = ["alpha", "beta", "gamma"]
+# NumPy reference: 使用classlabels_ints=[0,1,2]驱动class_count=3，与ssbo整数索引退化一致
+numpy_labels_ref13, numpy_scores_ref13 = onnx_reference_svm_classifier(
+    numpy_in_13,
+    classlabels_ints=[0, 1, 2],
+    coefficients=coefficients_13,
+    kernel_params=None,
+    kernel_type="LINEAR",
+    rho=rho_13,
+    support_vectors=None,
+    vectors_per_class=None,
+)
+start_time = time.time()
+svm_op.classlabels_ints = None
+svm_op.classlabels_strings = classlabels_strings_13
+svm_op.coefficients = coefficients_13
+svm_op.kernel_params = None
+svm_op.kernel_type = "LINEAR"
+svm_op.post_transform = "NONE"
+svm_op.prob_a = None
+svm_op.prob_b = None
+svm_op.rho = rho_13
+svm_op.support_vectors = None
+svm_op.vectors_per_class = None
+kp_labels, kp_scores = svm_op.run(numpy_in_13)
+print(f"{svm_op}:", kp_labels.shape, kp_scores.shape, time.time() - start_time, "seconds")
+print("Labels match (index):", np.array_equal(numpy_labels_ref13, kp_labels))
+print("Max score error:", np.abs(numpy_scores_ref13 - kp_scores).max())
+print("Scores All close:", np.allclose(numpy_scores_ref13, kp_scores, rtol=1e-4, atol=1e-4))
+print()
+
+# Case 14: SVC mode with unsupported kernel type — expects ValueError (line 688-690)
+print("Case 14: SVC mode with unsupported kernel type (expects ValueError)")
+numpy_in_14 = np.random.uniform(-1, 1, (16, 8)).astype(np.float32)
+svm_op.classlabels_ints = [0, 1]
+svm_op.classlabels_strings = None
+svm_op.coefficients = np.random.uniform(-1, 1, (1, 4)).astype(np.float32).reshape(-1)
+svm_op.kernel_params = [0.5, 0.0, 0]
+svm_op.kernel_type = "UNKNOWN_KERNEL"
+svm_op.post_transform = "NONE"
+svm_op.prob_a = None
+svm_op.prob_b = None
+svm_op.rho = [0.0]
+svm_op.support_vectors = np.random.uniform(-1, 1, (4, 8)).astype(np.float32).reshape(-1)
+svm_op.vectors_per_class = [2, 2]
+try:
+    svm_op.run(numpy_in_14)
+    print("ERROR: expected ValueError was not raised!")
+except ValueError as e:
+    print(f"Correctly raised ValueError: {e}")
+print()
+
