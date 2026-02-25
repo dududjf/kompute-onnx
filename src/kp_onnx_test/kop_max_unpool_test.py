@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_max_unpool import MaxUnpoolOp  # 使用正式实现
+from kp_onnx_ssbo.kop_max_unpool import MaxUnpoolOp  # 使用正式实现
 
 
 def onnx_reference_max_unpool(X, indices, kernel_shape, strides=None, pads=None, output_shape=None):
@@ -490,6 +490,38 @@ unpool_op.kernel_shape = kernel_shape
 unpool_op.strides = strides
 unpool_op.pads = pads
 kp_out = unpool_op.run(X, indices)[0]
+print(f"{unpool_op}:", kp_out.shape, time.time() - start_time, "seconds")
+print("Max error:", np.abs(numpy_out - kp_out).max())
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+print()
+
+# Case 15: 2D，output_shape 只包含空间维度 (H, W)
+print("Case 15: 2D, output_shape contains only spatial dims (H, W) — triggers line 128-131")
+np.random.seed(42)
+input_shape = (2, 3, 64, 64)
+kernel_shape = [3, 3]
+strides = [2, 2]
+pads = [1, 1, 1, 1]
+
+input_tensor = np.random.uniform(-8, 8, input_shape).astype(np.float32)
+X, indices = generate_max_indices(input_tensor, kernel_shape, strides, pads)
+
+# 推断形状是 (2, 3, 128, 128)，只传空间部分 (128, 128)
+output_shape_spatial = np.array([128, 128], dtype=np.int64)
+full_output_shape_15 = (2, 3, 128, 128)
+
+start_time = time.time()
+numpy_out = onnx_reference_max_unpool(
+    X, indices, kernel_shape=kernel_shape, strides=strides,
+    pads=pads, output_shape=full_output_shape_15
+)
+print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
+
+start_time = time.time()
+unpool_op.kernel_shape = kernel_shape
+unpool_op.strides = strides
+unpool_op.pads = pads
+kp_out = unpool_op.run(X, indices, output_shape_spatial)[0]
 print(f"{unpool_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
