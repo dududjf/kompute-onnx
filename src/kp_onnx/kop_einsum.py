@@ -235,6 +235,9 @@ void main() {
         return self.__repr__()
 
     def run(self, *inputs):
+        if any(inp.size == 0 for inp in inputs):
+            return [np.einsum(self.equation, *inputs).astype(np.float32)]
+
         input_tensors = []
         for inp in inputs:
             numpy_in = inp.reshape(-1).astype(np.float32)
