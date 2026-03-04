@@ -2,7 +2,7 @@ import sys
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_conv import ConvOp
+from kp_onnx_ssbo.kop_conv import ConvOp
 
 
 def onnx_reference_conv(X, W, B=None, auto_pad="NOTSET", dilations=None, group=1,
@@ -567,3 +567,4 @@ print(f"{conv_op_g}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 print()
+

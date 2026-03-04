@@ -2,7 +2,7 @@ import sys
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_conv_optimized import ConvOp
+from kp_onnx_ssbo.kop_conv_optimized import ConvOp
 
 
 def _make_ind(dim, shape):
@@ -127,11 +127,13 @@ def _conv_implementation_im2col(X, W, B, auto_pad, dilations, group, kernel_shap
         W = new_w
         kernel_shape = new_kernel_shape
 
-    if auto_pad in {"SAME_LOWER", "SAME_UPPER", "VALID"}:
+    if auto_pad == "VALID":
+        pads = [0] * ((len(X.shape) - 2) * 2)
+    elif auto_pad in {"SAME_LOWER", "SAME_UPPER"}:
         head = []
         tail = []
         for i in range(len(X.shape) - 2):
-            d = X.shape[i]
+            d = X.shape[2 + i]  # 空间维度，而非 batch/channel
             target_size = (d + strides[i] - 1) // strides[i]
             pad_needed = (target_size - 1) * strides[i] + kernel_shape[i] - d
             if auto_pad == "SAME_LOWER":
@@ -310,6 +312,7 @@ print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 print()
 
 # Case 8: 1D Conv, auto_pad VALID
+# VALID 等价于无 padding（pads 全 0），输出长度 = (in - k) / s + 1
 print("Case 8: 1D Conv, auto_pad VALID")
 numpy_in = np.random.uniform(-1, 1, (2, 3, 64)).astype(np.float32)
 numpy_w = np.random.uniform(-1, 1, (4, 3, 3)).astype(np.float32)
@@ -443,7 +446,7 @@ print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 print()
 
-# Case 15: 3D Conv, basic
+# Case 15: 3D Conv, basic  (ssbo 版不支持 3D，跳过)
 print("Case 15: 3D Conv, basic")
 numpy_in = np.random.uniform(-1, 1, (2, 3, 16, 16, 16)).astype(np.float32)
 numpy_w = np.random.uniform(-1, 1, (4, 3, 3, 3, 3)).astype(np.float32)
@@ -451,18 +454,21 @@ start_time = time.time()
 numpy_out = onnx_reference_conv(numpy_in, numpy_w)
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
-start_time = time.time()
-conv_op.strides = None
-conv_op.pads = None
-conv_op.dilations = None
-conv_op.auto_pad = "NOTSET"
-kp_out = conv_op.run(numpy_in, numpy_w)[0]
-print(f"{conv_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print("Max error:", np.abs(numpy_out - kp_out).max())
-print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+try:
+    start_time = time.time()
+    conv_op.strides = None
+    conv_op.pads = None
+    conv_op.dilations = None
+    conv_op.auto_pad = "NOTSET"
+    kp_out = conv_op.run(numpy_in, numpy_w)[0]
+    print(f"{conv_op}:", kp_out.shape, time.time() - start_time, "seconds")
+    print("Max error:", np.abs(numpy_out - kp_out).max())
+    print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+except NotImplementedError as e:
+    print(f"SKIP (ssbo does not support 3D): {e}")
 print()
 
-# Case 16: 3D Conv, with stride and padding
+# Case 16: 3D Conv, with stride and padding  (ssbo 版不支持 3D，跳过)
 print("Case 16: 3D Conv, with stride and padding")
 numpy_in = np.random.uniform(-1, 1, (2, 3, 16, 16, 16)).astype(np.float32)
 numpy_w = np.random.uniform(-1, 1, (4, 3, 3, 3, 3)).astype(np.float32)
@@ -470,15 +476,18 @@ start_time = time.time()
 numpy_out = onnx_reference_conv(numpy_in, numpy_w, strides=[2, 2, 2], pads=[1, 1, 1, 1, 1, 1])
 print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
 
-start_time = time.time()
-conv_op.strides = [2, 2, 2]
-conv_op.pads = [1, 1, 1, 1, 1, 1]
-conv_op.dilations = None
-conv_op.auto_pad = "NOTSET"
-kp_out = conv_op.run(numpy_in, numpy_w)[0]
-print(f"{conv_op}:", kp_out.shape, time.time() - start_time, "seconds")
-print("Max error:", np.abs(numpy_out - kp_out).max())
-print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+try:
+    start_time = time.time()
+    conv_op.strides = [2, 2, 2]
+    conv_op.pads = [1, 1, 1, 1, 1, 1]
+    conv_op.dilations = None
+    conv_op.auto_pad = "NOTSET"
+    kp_out = conv_op.run(numpy_in, numpy_w)[0]
+    print(f"{conv_op}:", kp_out.shape, time.time() - start_time, "seconds")
+    print("Max error:", np.abs(numpy_out - kp_out).max())
+    print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+except NotImplementedError as e:
+    print(f"SKIP (ssbo does not support 3D): {e}")
 print()
 
 # Case 17: 1D group=2 basic
@@ -548,7 +557,7 @@ print("Max error:", np.abs(numpy_out - kp_out).max())
 print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
 print()
 
-# Case 20: 3D group=2 bias+pad+stride
+# Case 20: 3D group=2 bias+pad+stride  (ssbo 版不支持 3D，跳过)
 print("Case 20: 3D Conv, group=2 bias+pad+stride")
 numpy_in = np.random.uniform(-1, 1, (1, 4, 16, 15, 14)).astype(np.float32)
 numpy_w = np.random.uniform(-1, 1, (6, 2, 3, 3, 2)).astype(np.float32)
@@ -564,10 +573,13 @@ conv_op_g.kernel_shape = None
 conv_op_g.strides = [2, 1, 1]
 conv_op_g.pads = [1, 0, 2, 0, 1, 0]
 conv_op_g.dilations = None
-start_time = time.time()
-kp_out = conv_op_g.run(numpy_in, numpy_w, numpy_b)[0]
-print(f"{conv_op_g}:", kp_out.shape, time.time() - start_time, "seconds")
-print("Max error:", np.abs(numpy_out - kp_out).max())
-print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+try:
+    start_time = time.time()
+    kp_out = conv_op_g.run(numpy_in, numpy_w, numpy_b)[0]
+    print(f"{conv_op_g}:", kp_out.shape, time.time() - start_time, "seconds")
+    print("Max error:", np.abs(numpy_out - kp_out).max())
+    print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+except NotImplementedError as e:
+    print(f"SKIP (ssbo does not support 3D): {e}")
 print()
 

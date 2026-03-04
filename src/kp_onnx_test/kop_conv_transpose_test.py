@@ -2,7 +2,7 @@ import sys
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_conv_transpose import ConvTransposeOp
+from kp_onnx_ssbo.kop_conv_transpose import ConvTransposeOp
 
 
 def onnx_reference_conv_transpose(X, W, B=None, auto_pad="NOTSET", dilations=None, group=1,

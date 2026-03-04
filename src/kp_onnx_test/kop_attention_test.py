@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_attention import AttentionOp
+from kp_onnx_ssbo.kop_attention import AttentionOp
 
 
 def _softmax(x: np.ndarray, axis: int = -1) -> np.ndarray:

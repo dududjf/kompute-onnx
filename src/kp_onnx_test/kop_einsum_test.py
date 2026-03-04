@@ -6,7 +6,7 @@ import numpy as np
 import time
 import kp
 
-from kp_onnx.kop_einsum import EinsumOp
+from kp_onnx_ssbo.kop_einsum import EinsumOp
 
 
 def onnx_einsum(equation, *inputs):
@@ -33,6 +33,7 @@ print(f"NumPy: {expected.shape}, {time.time() - t0:.4f} seconds")
 
 t0 = time.time()
 einsum_op = EinsumOp(mgr, equation)
+print(f"repr: {repr(einsum_op)}")
 result = einsum_op.run(a, b)[0]
 print(f"EinsumOp: {result.shape}, {time.time() - t0:.4f} seconds")
 
@@ -589,3 +590,89 @@ print(f"Max error: {np.abs(result - expected).max():.6e}")
 print(f"All close: {np.allclose(result, expected, rtol=1e-4, atol=1e-4)}")
 print()
 
+# Test Case 27: 被 reduce 的轴 size=1
+# 方程 "ij->i"，j=1 —— j 需要 reduce，但 size 为 1，直接跳过而不调用 shader
+print("=" * 60)
+print("Test Case 27: Reduce axis with size=1 (ij->i where j=1)")
+print("=" * 60)
+equation = "ij->i"
+a = np.random.randn(4, 1).astype(np.float32)  # j 维度 size=1，reduce 时直接跳过
+
+t0 = time.time()
+expected = onnx_einsum(equation, a)
+print(f"NumPy: {expected.shape}, {time.time() - t0:.4f} seconds")
+
+t0 = time.time()
+einsum_op = EinsumOp(mgr, equation)
+result = einsum_op.run(a)[0]
+print(f"EinsumOp: {result.shape}, {time.time() - t0:.4f} seconds")
+
+print(f"Shape match: {result.shape == expected.shape}")
+print(f"Max error: {np.abs(result - expected).max():.6e}")
+print(f"All close: {np.allclose(result, expected, rtol=1e-4, atol=1e-4)}")
+print()
+
+# Test Case 28: 4D 广播乘法，第二个张量的批次维度需要广播
+# 方程 "bchw,xchw->bchw"：b=2,c=3,h=4,w=5；第二个张量 x=1 广播到 b=2
+print("=" * 60)
+print("Test Case 28: 4D broadcast mul where bcast_shape2 batch needs broadcasting (bchw,xchw->bchw)")
+print("=" * 60)
+equation = "bchw,xchw->bchw"
+a = np.random.randn(2, 3, 4, 5).astype(np.float32)   # batch=2, c=3, h=4, w=5
+b = np.random.randn(1, 3, 4, 5).astype(np.float32)   # x=1 -> broadcast to batch=2
+
+t0 = time.time()
+expected = onnx_einsum(equation, a, b)
+print(f"NumPy: {expected.shape}, {time.time() - t0:.4f} seconds")
+
+t0 = time.time()
+einsum_op = EinsumOp(mgr, equation)
+result = einsum_op.run(a, b)[0]
+print(f"EinsumOp: {result.shape}, {time.time() - t0:.4f} seconds")
+
+print(f"Shape match: {result.shape == expected.shape}")
+print(f"Max error: {np.abs(result - expected).max():.6e}")
+print(f"All close: {np.allclose(result, expected, rtol=1e-4, atol=1e-4)}")
+print()
+
+# Test Case 29: 输出 shape 含 0（覆盖 output_shape 含零的提前返回分支）
+# 方程 "ij->ij"，输入的 i 维度为 0，输出 shape 也含 0
+print("=" * 60)
+print("Test Case 29: Zero-size output shape (early return branch)")
+print("=" * 60)
+equation = "ij->ij"
+a = np.zeros((0, 4), dtype=np.float32)  # i=0 -> output shape (0, 4)，含 0
+
+t0 = time.time()
+expected = onnx_einsum(equation, a)
+print(f"NumPy: {expected.shape}, {time.time() - t0:.4f} seconds")
+
+t0 = time.time()
+einsum_op = EinsumOp(mgr, equation)
+result = einsum_op.run(a)[0]
+print(f"EinsumOp: {result.shape}, {time.time() - t0:.4f} seconds")
+
+print(f"Shape match: {result.shape == expected.shape}")
+print()
+
+# Test Case 30: 重复下标且 diag_size==1（覆盖 diag_size==1 continue 分支）
+# 方程 "bii->b"，i=1，提取对角线时 diag_size==1，直接 continue 不调 shader
+print("=" * 60)
+print("Test Case 30: Repeated subscript with diag_size=1 (bii->b where i=1)")
+print("=" * 60)
+equation = "bii->b"
+a = np.random.randn(3, 1, 1).astype(np.float32)  # i=1，diag_size==1，走 continue 分支
+
+t0 = time.time()
+expected = onnx_einsum(equation, a)
+print(f"NumPy: {expected.shape}, {time.time() - t0:.4f} seconds")
+
+t0 = time.time()
+einsum_op = EinsumOp(mgr, equation)
+result = einsum_op.run(a)[0]
+print(f"EinsumOp: {result.shape}, {time.time() - t0:.4f} seconds")
+
+print(f"Shape match: {result.shape == expected.shape}")
+print(f"Max error: {np.abs(result - expected).max():.6e}")
+print(f"All close: {np.allclose(result, expected, rtol=1e-4, atol=1e-4)}")
+print()
