@@ -589,3 +589,65 @@ print(f"Max error: {np.abs(result - expected).max():.6e}")
 print(f"All close: {np.allclose(result, expected, rtol=1e-4, atol=1e-4)}")
 print()
 
+
+# Test Case 27: Zero-size input (early return branch)
+print("=" * 60)
+print("Test Case 27: Zero-size input (early return branch)")
+print("=" * 60)
+equation = "ij->ij"
+a = np.zeros((0, 4), dtype=np.float32)
+
+t0 = time.time()
+expected = onnx_einsum(equation, a)
+print(f"NumPy: {expected.shape}, {time.time() - t0:.4f} seconds")
+
+t0 = time.time()
+einsum_op = EinsumOp(mgr, equation)
+result = einsum_op.run(a)[0]
+print(f"EinsumOp: {result.shape}, {time.time() - t0:.4f} seconds")
+
+print(f"Shape match: {result.shape == expected.shape}")
+print(f"All close: {np.allclose(result, expected, rtol=1e-4, atol=1e-4)}")
+print()
+
+# Test Case 28: Zero-size matmul (early return branch)
+print("=" * 60)
+print("Test Case 28: Zero-size matmul (early return branch)")
+print("=" * 60)
+equation = "ij,jk->ik"
+a = np.zeros((0, 4), dtype=np.float32)
+b = np.random.randn(4, 5).astype(np.float32)
+
+t0 = time.time()
+expected = onnx_einsum(equation, a, b)
+print(f"NumPy: {expected.shape}, {time.time() - t0:.4f} seconds")
+
+t0 = time.time()
+einsum_op = EinsumOp(mgr, equation)
+result = einsum_op.run(a, b)[0]
+print(f"EinsumOp: {result.shape}, {time.time() - t0:.4f} seconds")
+
+print(f"Shape match: {result.shape == expected.shape}")
+print(f"All close: {np.allclose(result, expected, rtol=1e-4, atol=1e-4)}")
+print()
+
+# Test Case 29: Zero-size output shape (early return branch)
+print("=" * 60)
+print("Test Case 29: Zero-size output shape (early return branch)")
+print("=" * 60)
+equation = "ij,jk->ik"
+a = np.random.randn(3, 4).astype(np.float32)
+b = np.zeros((4, 0), dtype=np.float32)
+
+t0 = time.time()
+expected = onnx_einsum(equation, a, b)
+print(f"NumPy: {expected.shape}, {time.time() - t0:.4f} seconds")
+
+t0 = time.time()
+einsum_op = EinsumOp(mgr, equation)
+result = einsum_op.run(a, b)[0]
+print(f"EinsumOp: {result.shape}, {time.time() - t0:.4f} seconds")
+
+print(f"Shape match: {result.shape == expected.shape}")
+print(f"All close: {np.allclose(result, expected, rtol=1e-4, atol=1e-4)}")
+print()
