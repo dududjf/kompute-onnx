@@ -271,6 +271,7 @@ class TreeEnsembleOp:
         # Params: num_samples, num_features, num_targets, agg_mode
         params = np.array([n_samples, n_features, self.n_targets, agg_mode], dtype=np.uint32)
         params_tensor = self.manager.tensor_t(params, kp.TensorTypes.device)
+        self.manager.sequence().record(kp.OpTensorSyncDevice([params_tensor])).eval()
         updated_tensors.append(params_tensor)
 
         total_threads = n_samples * self.n_targets

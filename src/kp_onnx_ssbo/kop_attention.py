@@ -18,7 +18,7 @@ class AttentionOp:
         # Q*K^T计算的shader（批量矩阵乘法，K进行转置）
         self.shader_qk = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly buffer QBuf {{ float q_data[]; }};
 layout(std430, set=0, binding=1) readonly buffer KBuf {{ float k_data[]; }};
@@ -60,7 +60,7 @@ void main() {{
         # 添加bias和应用mask的shader - 没有mask的情况
         self.shader_add_bias_mask_no_mask = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly  buffer InBuf  {{ float in_data[];  }};
 layout(std430, set=0, binding=1) writeonly buffer OutBuf {{ float out_data[]; }};
@@ -93,7 +93,7 @@ void main() {{
         # 添加bias和应用mask的shader - 有mask的情况
         self.shader_add_bias_mask_with_mask = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly  buffer InBuf   {{ float in_data[];   }};
 layout(std430, set=0, binding=1) readonly  buffer MaskBuf {{ float mask_data[]; }};
@@ -131,7 +131,7 @@ void main() {{
         # Softcap shader
         self.shader_softcap = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly  buffer InBuf  {{ float in_data[];  }};
 layout(std430, set=0, binding=1) writeonly buffer OutBuf {{ float out_data[]; }};
@@ -158,7 +158,7 @@ void main() {{
         # Softmax shader
         self.shader_softmax = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly  buffer InBuf  {{ float in_data[];  }};
 layout(std430, set=0, binding=1) writeonly buffer OutBuf {{ float out_data[]; }};
@@ -202,7 +202,7 @@ void main() {{
         # Softmax @ V shader
         self.shader_attn_v = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly  buffer AttnBuf {{ float attn_data[]; }};
 layout(std430, set=0, binding=1) readonly  buffer VBuf    {{ float v_data[];    }};
@@ -239,7 +239,7 @@ void main() {{
         # 3D转换 shader: (batch, num_heads, q_seq_len, v_head_size) -> (batch, q_seq_len, num_heads * v_head_size)
         self.shader_transpose_reshape_3d = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly  buffer InBuf  {{ float in_data[];  }};
 layout(std430, set=0, binding=1) writeonly buffer OutBuf {{ float out_data[]; }};
@@ -273,7 +273,7 @@ void main() {{
         # 序列维度拼接 shader (past_key/past_value 与 K/V 的拼接)
         self.shader_concat_seq = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly  buffer Past    {{ float past_data[];    }};
 layout(std430, set=0, binding=1) readonly  buffer Current {{ float current_data[]; }};
@@ -320,7 +320,7 @@ void main() {{
         #   kv_h=1 -> q_h=1, kv_num_heads+1, 2*kv_num_heads+1, ...
         self.shader_gqa_expand = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly  buffer InBuf  {{ float in_data[];  }};
 layout(std430, set=0, binding=1) writeonly buffer OutBuf {{ float out_data[]; }};
@@ -361,8 +361,7 @@ void main() {{
     def __repr__(self):
         return f"AttentionOp({self.manager.get_device_properties()['device_name']})"
 
-    def __str__(self):
-        return self.__repr__()
+    __str__ = __repr__
 
     def run(self, *inputs):
         input_tensors = []

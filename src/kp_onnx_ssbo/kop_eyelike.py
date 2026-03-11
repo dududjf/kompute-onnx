@@ -10,7 +10,7 @@ class EyeLikeOp:
         self.manager = manager
         self.compiled_shader = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
+layout (local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
 layout(std430, set = 0, binding = 0) writeonly buffer OutBuf {{ float out_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly  buffer UIParams {{
     uint cols;

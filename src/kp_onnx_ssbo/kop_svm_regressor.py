@@ -29,7 +29,7 @@ class SVMRegressorOp:
 
         self.linear_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer InBuf  {{ float in_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer CoefBuf {{ float coef_buf[]; }};
@@ -63,7 +63,7 @@ void main() {{
         # 3: OutBuf
         # 4: Params
         kernel_layout = f"""
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer InBuf  {{ float in_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer SVBuf {{ float sv_buf[]; }};

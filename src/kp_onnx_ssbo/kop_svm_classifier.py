@@ -34,7 +34,7 @@ class SVMClassifierOp:
         # Shader for Linear Kernel (no support vectors)
         self.linear_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer InBuf  {{ float in_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer CoefBuf {{ float coef_buf[]; }};
@@ -79,7 +79,7 @@ void main() {{
         # 6: ScoreBuf
         # 7: Params
         svc_layout = f"""
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer InBuf {{ float in_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer SVBuf {{ float sv_buf[]; }};
@@ -286,7 +286,7 @@ void main() {
 """)
         self.vote_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer ScoreBuf {{ float score_buf[]; }};
 layout(std430, set = 0, binding = 1) writeonly buffer VoteBuf {{ float vote_buf[]; }};
@@ -325,7 +325,7 @@ void main() {{
 """)
         self.softmax_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) buffer ScoreBuf {{ float score_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer Params {{
@@ -364,7 +364,7 @@ void main() {{
 """)
         self.logistic_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) buffer ScoreBuf {{ float score_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer Params {{
@@ -389,7 +389,7 @@ void main() {{
 """)
         self.softmax_zero_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) buffer ScoreBuf {{ float score_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer Params {{
@@ -435,7 +435,7 @@ void main() {{
 """)
         self.probit_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) buffer ScoreBuf {{ float score_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer Params {{
@@ -473,7 +473,7 @@ void main() {{
 """)
         self.argmax_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer InBuf {{ float in_data[]; }};
 layout(std430, set = 0, binding = 1) writeonly buffer OutBuf {{ uint out_data[]; }};
@@ -519,7 +519,7 @@ void main() {{
 """)
         self.sigmoid_prob_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) buffer ScoreBuf {{ float score_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer ProbABuf {{ float prob_a_buf[]; }};
@@ -546,7 +546,7 @@ void main() {{
 """)
         self.label_map_shader = compile_source(f"""
 #version 450
-layout(local_size_x={LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) readonly buffer IndicesBuf {{ uint indices_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer LabelsBuf {{ float labels_buf[]; }};

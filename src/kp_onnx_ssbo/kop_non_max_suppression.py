@@ -24,7 +24,7 @@ class NonMaxSuppressionOp:
         #   [5] num_batches
         self.nms_shader = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
+layout (local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InScores   {{ float scores[]; }};
 layout(std430, set = 0, binding = 1) readonly  buffer InIoU      {{ float iou_matrix[]; }};
@@ -121,7 +121,7 @@ void main() {{
         #   [1] num_batches
         self.iou_shader_corner = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InBoxes {{ float boxes[]; }};
 layout(std430, set = 0, binding = 1) writeonly buffer OutIoU  {{ float iou_matrix[]; }};
@@ -184,7 +184,7 @@ void main() {{
         # ONNX center box 格式: [cx, cy, w, h]
         self.iou_shader_center = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InBoxes {{ float boxes[]; }};
 layout(std430, set = 0, binding = 1) writeonly buffer OutIoU  {{ float iou_matrix[]; }};

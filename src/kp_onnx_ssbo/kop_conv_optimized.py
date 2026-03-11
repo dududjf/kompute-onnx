@@ -27,7 +27,7 @@ class ConvOp:
         # ------------------------------------------------------------------
         self.conv1d_gemm_shader = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 layout(std430, set = 0, binding = 0) readonly buffer XBuf {{ float x_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer WBuf {{ float w_buf[]; }};
 layout(std430, set = 0, binding = 2) readonly buffer BBuf {{ float b_buf[]; }};
@@ -145,7 +145,7 @@ void main() {{
         # ------------------------------------------------------------------
         self.conv2d_gemm_shader = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 layout(std430, set = 0, binding = 0) readonly buffer XBuf {{ float x_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer WBuf {{ float w_buf[]; }};
 layout(std430, set = 0, binding = 2) readonly buffer BBuf {{ float b_buf[]; }};
@@ -311,7 +311,7 @@ void main() {{
         # ------------------------------------------------------------------
         self.conv3d_gemm_shader = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 layout(std430, set = 0, binding = 0) readonly buffer XBuf {{ float x_buf[]; }};
 layout(std430, set = 0, binding = 1) readonly buffer WBuf {{ float w_buf[]; }};
 layout(std430, set = 0, binding = 2) readonly buffer BBuf {{ float b_buf[]; }};

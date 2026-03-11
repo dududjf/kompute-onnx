@@ -21,7 +21,7 @@ class EinsumOp:
         # 用于广播的逐元素乘法的 Shader
         self.shader_mul = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InBuf1  {{ float in1[];      }};
 layout(std430, set = 0, binding = 1) readonly  buffer InBuf2  {{ float in2[];      }};
@@ -67,7 +67,7 @@ void main() {{
         # 沿轴进行 ReduceSum 的 Shader
         self.shader_reduce = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
+layout (local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InBuf  {{ float in_data[];  }};
 layout(std430, set = 0, binding = 1) writeonly buffer OutBuf {{ float out_data[]; }};
@@ -98,7 +98,7 @@ void main() {{
         # 全局 ReduceSum 的专用 Shader（将整个张量求和为标量）
         self.shader_reduce_all = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InBuf  {{ float in_data[];  }};
 layout(std430, set = 0, binding = 1) writeonly buffer OutBuf {{ float out_data[]; }};
@@ -120,7 +120,7 @@ void main() {{
         # 单轴交换的转置 Shader
         self.shader_transpose = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InBuf  {{ float in_data[];  }};
 layout(std430, set = 0, binding = 1) writeonly buffer OutBuf {{ float out_data[]; }};
@@ -153,7 +153,7 @@ void main() {{
         # 对角线提取的 Shader
         self.shader_diagonal = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InBuf  {{ float in_data[];  }};
 layout(std430, set = 0, binding = 1) writeonly buffer OutBuf {{ float out_data[]; }};
@@ -184,7 +184,7 @@ void main() {{
         # 分批矩阵乘法的 Shader
         self.shader_matmul = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InBuf1 {{ float in1[];      }};
 layout(std430, set = 0, binding = 1) readonly  buffer InBuf2 {{ float in2[];      }};
@@ -221,7 +221,7 @@ void main() {{
         # 通用对角线提取 Shader
         self.shader_diagonal_general = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_1D}) in;
+layout (local_size_x = {LOCAL_X_1D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InBuf       {{ float in_data[];   }};
 layout(std430, set = 0, binding = 1) writeonly buffer OutBuf      {{ float out_data[];  }};

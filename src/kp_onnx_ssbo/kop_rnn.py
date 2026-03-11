@@ -12,7 +12,7 @@ class RnnOp:
         # 用于 X * W^T 预计算的 matmul shader（layout 0：X 形状 [seq,batch,input]）
         self.matmul_shader_layout0 = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InA   {{ float A[];   }};
 layout(std430, set = 0, binding = 1) readonly  buffer InB   {{ float B[];   }};
@@ -51,7 +51,7 @@ void main() {{
         # 用于 X * W^T 预计算的 matmul shader（layout 1：X 形状 [batch,seq,input]）
         self.matmul_shader_layout1 = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InA   {{ float A[];   }};
 layout(std430, set = 0, binding = 1) readonly  buffer InB   {{ float B[];   }};
@@ -191,7 +191,7 @@ void main() {{
 
         shader_source = f"""
 #version 450
-layout(local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
+layout (local_size_x = {LOCAL_X_2D}, local_size_y = {LOCAL_Y_2D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InXW     {{ float XW[];     }};
 layout(std430, set = 0, binding = 1) readonly  buffer InHInit  {{ float H_init[]; }};
@@ -316,7 +316,7 @@ float apply_activation_{i}(float val, float alpha, float beta) {{
 
         shader_source = f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer InXW     {{ float XW[];     }};
 layout(std430, set = 0, binding = 1) readonly  buffer InHInit  {{ float H_init[]; }};

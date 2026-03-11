@@ -152,7 +152,7 @@ class TreeEnsembleClassifierOp:
         # Generate GLSL
         shader = []
         shader.append("#version 450")
-        shader.append(f"layout(local_size_x={LOCAL_X_1D}) in;")
+        shader.append(f"layout (local_size_x = {LOCAL_X_1D}) in;")
         shader.append("layout(std430, set=0, binding=0) readonly buffer InputX { float X[]; };")
         shader.append("layout(std430, set=0, binding=1) readonly buffer BaseValues { float base_values[]; };")
         shader.append("layout(std430, set=0, binding=2) writeonly buffer OutputScores { float output_scores[]; };")
@@ -407,6 +407,7 @@ float probit_approx(float x) {
         # Params buffer: num_samples, num_features
         params_array = np.array([n_samples, n_features], dtype=np.uint32)
         params_tensor = self.manager.tensor_t(params_array, kp.TensorTypes.device)
+        self.manager.sequence().record(kp.OpTensorSyncDevice([params_tensor])).eval()
         updated_tensors.append(params_tensor)
         params.append(params_tensor)
 

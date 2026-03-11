@@ -12,7 +12,7 @@ class RotaryEmbeddingOp:
         # 切片 Shader
         self.shader_slice = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set = 0, binding = 0) readonly  buffer in_buf     {{ float in_tensor[];     }};
 layout(std430, set = 0, binding = 1) writeonly buffer out_buf    {{ float out_tensor[];    }};
@@ -45,7 +45,7 @@ void main() {{
         # 旋转嵌入计算的 Shader - 交错模式
         self.shader_rotary_interleaved = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly buffer InputBuf {{ float input_data[]; }};
 layout(std430, set=0, binding=1) readonly buffer CosBuf {{ float cos_data[]; }};
@@ -97,7 +97,7 @@ void main() {{
         # 旋转嵌入计算的 Shader - 非交错模式
         self.shader_rotary_non_interleaved = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly buffer InputBuf {{ float input_data[]; }};
 layout(std430, set=0, binding=1) readonly buffer CosBuf {{ float cos_data[]; }};
@@ -149,7 +149,7 @@ void main() {{
         # 3D 转 4D 变换 Shader
         self.shader_reshape_3d_to_4d = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly buffer InputBuf {{ float input_data[]; }};
 layout(std430, set=0, binding=1) writeonly buffer OutputBuf {{ float output_data[]; }};
@@ -185,7 +185,7 @@ void main() {{
         # 4D 到 3D 还原 Shader
         self.shader_reshape_4d_to_3d = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly buffer InputBuf {{ float input_data[]; }};
 layout(std430, set=0, binding=1) writeonly buffer OutputBuf {{ float output_data[]; }};
@@ -221,7 +221,7 @@ void main() {{
         # 4D transpose Shader
         self.shader_transpose_4d = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly buffer InputBuf {{ float input_data[]; }};
 layout(std430, set=0, binding=1) writeonly buffer OutputBuf {{ float output_data[]; }};
@@ -254,7 +254,7 @@ void main() {{
         # position_ids 收集 Shader
         self.shader_gather_position = compile_source(f"""
 #version 450
-layout(local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
+layout (local_size_x = {LOCAL_X_3D}, local_size_y = {LOCAL_Y_3D}, local_size_z = {LOCAL_Z_3D}) in;
 
 layout(std430, set=0, binding=0) readonly buffer CacheBuf {{ float cache_data[]; }};
 layout(std430, set=0, binding=1) readonly buffer PositionIdsBuf {{ float position_ids_data[]; }};
@@ -285,8 +285,7 @@ void main() {{
         device_name = self.manager.get_device_properties()['device_name']
         return f"RotaryEmbeddingOp({device_name})"
 
-    def __str__(self):
-        return self.__repr__()
+    __str__ = __repr__
 
     def run(self, *inputs):
         input_tensors = []
