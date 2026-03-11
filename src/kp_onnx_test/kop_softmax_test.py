@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_softmax import SoftmaxOp
+from kp_onnx_ssbo.kop_softmax import SoftmaxOp
 
 
 def onnx_softmax(X: np.ndarray, axis: int = -1) -> np.ndarray:

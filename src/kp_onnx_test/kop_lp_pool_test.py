@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_lp_pool import LpPoolOp
+from kp_onnx_ssbo.kop_lp_pool import LpPoolOp
 
 
 def onnx_reference_lp_pool(x, kernel_shape, strides, p=2, pads=None, auto_pad="", ceil_mode=0, count_include_pad=0, dilations=None):
@@ -613,6 +613,29 @@ pool_op.count_include_pad = 0
 pool_op.ceil_mode = 1
 pool_op.dilations = [1,2,1]
 pool_op.pads = [1,0,1,0,1,0]
+kp_out = pool_op.run(numpy_in)[0]
+print(f"{pool_op}:", kp_out.shape, time.time() - start_time, "seconds")
+print("Max error:", np.abs(numpy_out - kp_out).max())
+print("All close:", np.allclose(numpy_out, kp_out, rtol=1e-4, atol=1e-4))
+print()
+
+# Case 17: kernel_shape 某维度为 1（stride=1, pad=0）
+print("Case 17: 2D, kernel_shape=[3,1]，第二维跳过池化")
+numpy_in = np.random.uniform(-8, 8, (2, 3, 32, 32)).astype(np.float32)
+start_time = time.time()
+numpy_out = onnx_reference_lp_pool(
+    numpy_in, kernel_shape=[3, 1], strides=[2, 1], pads=[1, 0, 1, 0]
+)
+print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
+
+start_time = time.time()
+pool_op.kernel_shape = [3, 1]
+pool_op.strides = [2, 1]
+pool_op.auto_pad = ""
+pool_op.count_include_pad = 0
+pool_op.ceil_mode = 0
+pool_op.dilations = None
+pool_op.pads = [1, 0, 1, 0]
 kp_out = pool_op.run(numpy_in)[0]
 print(f"{pool_op}:", kp_out.shape, time.time() - start_time, "seconds")
 print("Max error:", np.abs(numpy_out - kp_out).max())

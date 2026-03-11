@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_rotary_embedding import RotaryEmbeddingOp
+from kp_onnx_ssbo.kop_rotary_embedding import RotaryEmbeddingOp
 
 
 def rotary_embedding(

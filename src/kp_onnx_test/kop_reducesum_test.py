@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_reducesum import ReduceSumOp
+from kp_onnx_ssbo.kop_reducesum import ReduceSumOp
 
 # Device
 device_id = 0
@@ -148,3 +148,41 @@ print(f"{reduce_sum_op}: ", time.time() - start_time, "seconds")
 print("shape equal:", kp_out.shape == np_out.shape)
 print("Max error:", np.abs(np_out - kp_out).max())
 print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+
+# -------- Case 7 --------
+# 使用负数 axis
+print("Case 7 for keepdims and not noop_with_empty_axes: axes contains negative value [-1]")
+axes = np.array([-1], dtype=np.int32)   # -1 等价于最后一个维度（dim=2）
+start_time = time.time()
+np_out = np_sum(x, axes, keepdims=True, noop_with_empty_axes=False)
+print("NumPy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+reduce_sum_op.keepdims = True
+reduce_sum_op.noop_with_empty_axes = False
+kp_out = reduce_sum_op.run(x, axes)[0]
+print(f"{reduce_sum_op}: ", time.time() - start_time, "seconds")
+
+print("shape equal:", kp_out.shape == np_out.shape)
+print("Max error:", np.abs(np_out - kp_out).max())
+print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+print("----")
+
+# -------- Case 8 --------
+# 使用多个负数 axis
+print("Case 8 for not keepdims and not noop_with_empty_axes: axes contains negative values [-2, -1]")
+axes = np.array([-2, -1], dtype=np.int32)   # 等价于 [1, 2]
+start_time = time.time()
+np_out = np_sum(x, axes, keepdims=False, noop_with_empty_axes=False)
+print("NumPy:", time.time() - start_time, "seconds")
+
+start_time = time.time()
+reduce_sum_op.keepdims = False
+reduce_sum_op.noop_with_empty_axes = False
+kp_out = reduce_sum_op.run(x, axes)[0]
+print(f"{reduce_sum_op}: ", time.time() - start_time, "seconds")
+
+print("shape equal:", kp_out.shape == np_out.shape)
+print("Max error:", np.abs(np_out - kp_out).max())
+print(np.allclose(np_out, kp_out, rtol=1e-4, atol=1e-4))
+print("----")

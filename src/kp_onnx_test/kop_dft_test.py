@@ -1,7 +1,7 @@
 from kp import Manager
 import numpy as np
 import time
-from kp_onnx.kop_dft import DFTOp
+from kp_onnx_ssbo.kop_dft import DFTOp
 
 
 def onnx_reference_dft(x, dft_length=None, axis=-2, inverse=False, onesided=False):
@@ -219,3 +219,19 @@ print("IDFT result shape:", idft_result.shape)
 print("Max error (input vs IDFT):", np.abs(numpy_in - idft_result).max())
 print("All close (input vs IDFT):", np.allclose(numpy_in, idft_result, rtol=1e-4, atol=1e-4))
 print()
+
+# Case 9: 显式传入 dft_length < input_n
+# dft_length=128 < input_n=256，只取前 128 个样本参与计算
+print("Case 9: 显式传入 dft_length < input_n")
+numpy_in = np.random.uniform(-1, 1, (16, 256, 2)).astype(np.float32)
+dft_length = 128  # 截断至 128 点
+start_time = time.time()
+numpy_out = onnx_reference_dft(numpy_in, dft_length=dft_length, axis=-2, inverse=False, onesided=False)
+print("NumPy:", numpy_out.shape, time.time() - start_time, "seconds")
+start_time = time.time()
+kp_out = run_dft(dft_op, numpy_in, dft_length=dft_length, axis=-2, inverse=0, onesided=0)
+print(f"{dft_op}:", kp_out.shape, time.time() - start_time, "seconds")
+print("Max error:", np.abs(numpy_out - kp_out).max())
+print("All close:", np.allclose(numpy_out, kp_out, rtol=3e-3, atol=3e-3))
+print()
+
